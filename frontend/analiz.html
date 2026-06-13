@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarım AI - Analiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+
+    <nav class="bg-green-700 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🌿</span>
+                <span class="text-xl font-bold">Tarım AI</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="/" class="hover:text-green-200">Dashboard</a>
+                <a href="/analiz" class="font-semibold border-b-2 border-white pb-1">Analiz</a>
+                <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
+                <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
+                <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Hastalık Analizi</h1>
+        <p class="text-gray-500 mb-8">Fotoğraf yükle, yapay zeka analiz etsin</p>
+
+        <div class="bg-white rounded-2xl shadow p-8">
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Bahçe Seç</label>
+                <select id="bahce-sec" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">Bahçe seçin...</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fotoğraf</label>
+                <div id="yukle-alan"
+                    class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center cursor-pointer hover:border-green-500 transition"
+                    onclick="document.getElementById('fotograf-input').click()">
+                    <div class="text-5xl mb-3">📷</div>
+                    <p class="text-gray-500">Fotoğraf seçmek için tıkla</p>
+                    <p class="text-gray-400 text-sm mt-1">JPG, PNG desteklenir</p>
+                </div>
+                <input type="file" id="fotograf-input" accept="image/*" class="hidden" onchange="fotografSec(event)">
+                <img id="onizleme" class="hidden mt-4 rounded-xl max-h-64 mx-auto">
+            </div>
+
+            <button onclick="analizYap()"
+                id="analiz-btn"
+                class="w-full bg-green-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-green-700 transition">
+                🔍 Analiz Et
+            </button>
+        </div>
+
+        <div id="sonuc" class="hidden mt-8 bg-white rounded-2xl shadow p-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Analiz Sonucu</h2>
+            <div id="sonuc-icerik"></div>
+        </div>
+    </div>
+
+    <script>
+        async function bahceleriYukle() {
+            const res = await fetch('/api/bahceler');
+            const bahceler = await res.json();
+            const select = document.getElementById('bahce-sec');
+            bahceler.forEach(b => {
+                select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
+            });
+        }
+
+        function fotografSec(event) {
+            const dosya = event.target.files[0];
+            if (!dosya) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = document.getElementById('onizleme');
+                img.src = e.target.result;
+                img.classList.remove('hidden');
+                document.getElementById('yukle-alan').classList.add('hidden');
+            };
+            reader.readAsDataURL(dosya);
+        }
+
+        async function analizYap() {
+            const bahceId = document.getElementById('bahce-sec').value;
+            const fotograf = document.getElementById('fotograf-input').files[0];
+
+            if (!bahceId) { alert('Lütfen bahçe seçin!'); return; }
+            if (!fotograf) { alert('Lütfen fotoğraf seçin!'); return; }
+
+            const btn = document.getElementById('analiz-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Analiz ediliyor...';
+
+            const form = new FormData();
+            form.append('fotograf', fotograf);
+            form.append('bahce_id', bahceId);
+
+            try {
+                const res = await fetch('/api/analiz', { method: 'POST', body: form });
+                const veri = await res.json();
+
+                const sonucDiv = document.getElementById('sonuc');
+                const icerik = document.getElementById('sonuc-icerik');
+                sonucDiv.classList.remove('hidden');
+
+                const saglikli = veri.hastalik_adi === 'Sağlıklı';
+
+                icerik.innerHTML = `
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-3xl">${saglikli ? '✅' : '⚠️'}</span>
+                        <p class="font-bold text-xl ${saglikli ? 'text-green-600' : 'text-red-600'}">${veri.hastalik_adi}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed mb-4">
+                        ${veri.rapor}
+                    </div>
+                    ${!saglikli ? `
+                    <div class="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
+                        <h3 class="font-semibold text-orange-800 mb-4">💊 Tedavi Kaydı Oluştur</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">İlaç Adı</label>
+                                <input type="text" id="tedavi-ilac" value="${veri.onerilen_ilac || veri.hastalik_adi + ' tedavisi'}"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Doz</label>
+                                <input type="text" id="tedavi-doz" value="${veri.onerilen_doz || ''}" placeholder="Örn: 2g/L"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                ${veri.uygulama_sikligi ? `<p class="text-sm text-orange-600 mt-1">⏰ Önerilen uygulama sıklığı: <strong>${veri.uygulama_sikligi}</strong></p>` : ''}
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Uygulama Tarihi</label>
+                                    <input type="date" id="tedavi-tarih" value="${new Date().toISOString().split('T')[0]}"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sonraki Uygulama</label>
+                                    <input type="date" id="tedavi-sonraki"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                </div>
+                            </div>
+                            <button onclick="tedaviKaydet(${bahceId}, ${veri.analiz_id})"
+                                class="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition">
+                                💊 Tedaviyi Kaydet ve İlaçlamaya Ekle
+                            </button>
+                        </div>
+                    </div>` : '<p class="text-green-600 font-medium text-center mt-4">✅ Bitkiniz sağlıklı görünüyor!</p>'}
+                `;
+
+            } catch (e) {
+                alert('Hata oluştu: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Analiz Et';
+            }
+        }
+
+        async function tedaviKaydet(bahceId, analizId) {
+            const ilacAdi = document.getElementById('tedavi-ilac').value;
+            const doz = document.getElementById('tedavi-doz').value;
+            const tarih = document.getElementById('tedavi-tarih').value;
+            const sonraki = document.getElementById('tedavi-sonraki').value;
+
+            if (!tarih) { alert('Uygulama tarihi seçin!'); return; }
+
+            const form = new FormData();
+            form.append('bahce_id', bahceId);
+            form.append('analiz_id', analizId);
+            form.append('ilac_adi', ilacAdi);
+            form.append('doz', doz);
+            form.append('uygulama_tarihi', tarih);
+            form.append('sonraki_tarih', sonraki);
+            form.append('notlar', 'AI analizi sonucu oluşturuldu');
+
+            const res = await fetch('/api/ilaclamalar', { method: 'POST', body: form });
+
+            if (res.ok) {
+                alert('✅ Tedavi ilaçlama takibine eklendi!');
+                window.location.href = '/ilaclar';
+            } else {
+                alert('Hata oluştu!');
+            }
+        }
+
+        bahceleriYukle();
+    </script>
+</body>
+</html>

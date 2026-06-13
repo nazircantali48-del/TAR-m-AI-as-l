@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarım AI - İlaçlama</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+
+    <nav class="bg-green-700 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🌿</span>
+                <span class="text-xl font-bold">Tarım AI</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="/" class="hover:text-green-200">Dashboard</a>
+                <a href="/analiz" class="hover:text-green-200">Analiz</a>
+                <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
+                <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
+                <a href="/ilaclar" class="font-semibold border-b-2 border-white pb-1">İlaçlama</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">İlaçlama Takibi</h1>
+                <p class="text-gray-500 mt-1">Uygulanan ilaçlar ve takvim</p>
+            </div>
+            <button onclick="modalAc()"
+                class="bg-orange-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-orange-600 transition">
+                + İlaçlama Ekle
+            </button>
+        </div>
+
+        <!-- FİLTRE -->
+        <div class="bg-white rounded-2xl shadow p-4 mb-6">
+            <select id="bahce-filtre" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="yukle()">
+                <option value="">Tüm Bahçeler</option>
+            </select>
+        </div>
+
+        <!-- İLAÇLAMA LİSTESİ -->
+        <div id="ilaclamalar" class="space-y-4">
+            <p class="text-gray-400 text-center py-12">Yükleniyor...</p>
+        </div>
+    </div>
+
+    <!-- YENİ İLAÇLAMA MODAL -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">İlaçlama Ekle</h2>
+                <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bahçe *</label>
+                    <select id="ilaclama-bahce" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="">Bahçe seçin...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">İlaç Adı *</label>
+                    <input type="text" id="ilac-adi" placeholder="Örn: Bakır sülfat"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Doz</label>
+                    <input type="text" id="ilac-doz" placeholder="Örn: 2g/L"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Uygulama Tarihi *</label>
+                    <input type="date" id="uygulama-tarihi"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sonraki Uygulama</label>
+                    <input type="date" id="sonraki-tarih"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notlar</label>
+                    <textarea id="ilac-notlar" rows="3" placeholder="Ek notlar..."
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="modalKapat()"
+                    class="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition">
+                    İptal
+                </button>
+                <button onclick="ilaclamaEkle()"
+                    class="flex-1 bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition">
+                    Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function bahceleriYukle() {
+            const res = await fetch('/api/bahceler');
+            const bahceler = await res.json();
+            const selects = ['bahce-filtre', 'ilaclama-bahce'];
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                bahceler.forEach(b => {
+                    select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
+                });
+            });
+        }
+
+        async function yukle() {
+            const bahceId = document.getElementById('bahce-filtre').value;
+            const url = bahceId ? `/api/ilaclamalar?bahce_id=${bahceId}` : '/api/ilaclamalar';
+            const res = await fetch(url);
+            const ilaclamalar = await res.json();
+            const div = document.getElementById('ilaclamalar');
+
+            if (ilaclamalar.length === 0) {
+                div.innerHTML = `
+                    <div class="text-center py-16">
+                        <div class="text-6xl mb-4">💊</div>
+                        <p class="text-gray-400 text-lg">Henüz ilaçlama kaydı yok</p>
+                    </div>`;
+                return;
+            }
+
+            const bugun = new Date();
+
+            div.innerHTML = ilaclamalar.map(i => {
+                const sonraki = i.sonraki_tarih ? new Date(i.sonraki_tarih) : null;
+                const gecti = sonraki && sonraki < bugun;
+                const yaklasiyor = sonraki && !gecti && (sonraki - bugun) < 3 * 24 * 60 * 60 * 1000;
+
+                return `
+                <div class="bg-white rounded-2xl shadow p-6 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-2xl">💊</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">${i.ilac_adi}</h3>
+                            ${i.doz ? `<p class="text-gray-500 text-sm">Doz: ${i.doz}</p>` : ''}
+                            <p class="text-gray-400 text-sm">Uygulama: ${new Date(i.uygulama_tarihi).toLocaleDateString('tr-TR')}</p>
+                            ${sonraki ? `
+                                <p class="text-sm mt-1 font-medium ${gecti ? 'text-red-500' : yaklasiyor ? 'text-orange-500' : 'text-green-600'}">
+                                    ${gecti ? '⚠️ Gecikti' : yaklasiyor ? '⏰ Yaklaşıyor'  : '✅ Planlandı'}: 
+                                    ${sonraki.toLocaleDateString('tr-TR')}
+                                </p>` : ''}
+                        </div>
+                    </div>
+                    <button onclick="ilaclamaSil(${i.id})" class="text-red-400 hover:text-red-600 text-sm">Sil</button>
+                </div>`;
+            }).join('');
+        }
+
+        async function ilaclamaEkle() {
+            const bahceId = document.getElementById('ilaclama-bahce').value;
+            const ilacAdi = document.getElementById('ilac-adi').value;
+            const uygulamaTarihi = document.getElementById('uygulama-tarihi').value;
+
+            if (!bahceId) { alert('Bahçe seçin!'); return; }
+            if (!ilacAdi) { alert('İlaç adı zorunlu!'); return; }
+            if (!uygulamaTarihi) { alert('Uygulama tarihi zorunlu!'); return; }
+
+            const form = new FormData();
+            form.append('bahce_id', bahceId);
+            form.append('ilac_adi', ilacAdi);
+            form.append('doz', document.getElementById('ilac-doz').value);
+            form.append('uygulama_tarihi', uygulamaTarihi);
+            form.append('sonraki_tarih', document.getElementById('sonraki-tarih').value);
+            form.append('notlar', document.getElementById('ilac-notlar').value);
+
+            await fetch('/api/ilaclamalar', { method: 'POST', body: form });
+            modalKapat();
+            yukle();
+        }
+
+        async function ilaclamaSil(id) {
+            if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+            await fetch(`/api/ilaclamalar/${id}`, { method: 'DELETE' });
+            yukle();
+        }
+
+        function modalAc() { document.getElementById('modal').classList.remove('hidden'); }
+        function modalKapat() { document.getElementById('modal').classList.add('hidden'); }
+
+        bahceleriYukle();
+        yukle();
+    </script>
+</body>
+</html>

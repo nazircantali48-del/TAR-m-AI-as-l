@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarım AI - Bahçeler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+
+    <nav class="bg-green-700 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🌿</span>
+                <span class="text-xl font-bold">Tarım AI</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="/" class="hover:text-green-200">Dashboard</a>
+                <a href="/analiz" class="hover:text-green-200">Analiz</a>
+                <a href="/bahceler" class="font-semibold border-b-2 border-white pb-1">Bahçeler</a>
+                <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
+                <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Bahçeler</h1>
+                <p class="text-gray-500 mt-1">Bahçe ve tarla yönetimi</p>
+            </div>
+            <button onclick="modalAc()"
+                class="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition">
+                + Yeni Bahçe
+            </button>
+        </div>
+
+        <!-- BAHÇE LİSTESİ -->
+        <div id="bahceler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <p class="text-gray-400 col-span-3 text-center py-12">Yükleniyor...</p>
+        </div>
+    </div>
+
+    <!-- YENİ BAHÇE MODAL -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Yeni Bahçe Ekle</h2>
+                <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bahçe Adı *</label>
+                    <input type="text" id="bahce-ad" placeholder="Örn: Kuzey Bahçesi"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Konum</label>
+                    <input type="text" id="bahce-konum" placeholder="Örn: Marmaris, Muğla"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Alan (m²)</label>
+                    <input type="number" id="bahce-alan" placeholder="Örn: 500"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notlar</label>
+                    <textarea id="bahce-notlar" rows="3" placeholder="Ek notlar..."
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="modalKapat()"
+                    class="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition">
+                    İptal
+                </button>
+                <button onclick="bahceEkle()"
+                    class="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition">
+                    Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function yukle() {
+            const res = await fetch('/api/bahceler');
+            const bahceler = await res.json();
+            const div = document.getElementById('bahceler');
+
+            if (bahceler.length === 0) {
+                div.innerHTML = `
+                    <div class="col-span-3 text-center py-16">
+                        <div class="text-6xl mb-4">🌱</div>
+                        <p class="text-gray-400 text-lg">Henüz bahçe eklenmedi</p>
+                        <button onclick="modalAc()" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700">
+                            İlk Bahçeni Ekle
+                        </button>
+                    </div>`;
+                return;
+            }
+
+            div.innerHTML = bahceler.map(b => `
+                <div class="bg-white rounded-2xl shadow p-6 hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">${b.ad}</h3>
+                            ${b.konum ? `<p class="text-gray-500 text-sm mt-1">📍 ${b.konum}</p>` : ''}
+                        </div>
+                        <button onclick="bahceSil(${b.id})" class="text-red-400 hover:text-red-600 text-sm">Sil</button>
+                    </div>
+                    ${b.alan_m2 ? `<p class="text-gray-600 text-sm mb-2">📐 ${b.alan_m2} m²</p>` : ''}
+                    ${b.notlar ? `<p class="text-gray-500 text-sm mb-4">${b.notlar}</p>` : ''}
+                    <div class="flex gap-2 mt-4">
+                        <a href="/analiz" class="flex-1 bg-green-100 text-green-700 py-2 rounded-lg text-sm text-center font-medium hover:bg-green-200">
+                            Analiz Yap
+                        </a>
+                        <a href="/gecmis" class="flex-1 bg-blue-100 text-blue-700 py-2 rounded-lg text-sm text-center font-medium hover:bg-blue-200">
+                            Geçmiş
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function bahceEkle() {
+            const ad = document.getElementById('bahce-ad').value;
+            if (!ad) { alert('Bahçe adı zorunlu!'); return; }
+
+            const form = new FormData();
+            form.append('ad', ad);
+            form.append('konum', document.getElementById('bahce-konum').value);
+            form.append('alan_m2', document.getElementById('bahce-alan').value || 0);
+            form.append('notlar', document.getElementById('bahce-notlar').value);
+
+            await fetch('/api/bahceler', { method: 'POST', body: form });
+            modalKapat();
+            yukle();
+        }
+
+        async function bahceSil(id) {
+            if (!confirm('Bu bahçeyi silmek istediğinize emin misiniz?')) return;
+            await fetch(`/api/bahceler/${id}`, { method: 'DELETE' });
+            yukle();
+        }
+
+        function modalAc() { document.getElementById('modal').classList.remove('hidden'); }
+        function modalKapat() { document.getElementById('modal').classList.add('hidden'); }
+
+        yukle();
+    </script>
+</body>
+</html>

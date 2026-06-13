@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarım AI - Geçmiş</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+
+    <nav class="bg-green-700 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🌿</span>
+                <span class="text-xl font-bold">Tarım AI</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="/" class="hover:text-green-200">Dashboard</a>
+                <a href="/analiz" class="hover:text-green-200">Analiz</a>
+                <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
+                <a href="/gecmis" class="font-semibold border-b-2 border-white pb-1">Geçmiş</a>
+                <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Geçmiş Analizler</h1>
+        <p class="text-gray-500 mb-6">Tüm analiz kayıtları</p>
+
+        <!-- FİLTRELER -->
+        <div class="bg-white rounded-2xl shadow p-4 mb-6 flex gap-4">
+            <select id="bahce-filtre" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" onchange="yukle()">
+                <option value="">Tüm Bahçeler</option>
+            </select>
+            <input type="text" id="arama" placeholder="Hastalık ara..." 
+                class="border border-gray-300 rounded-lg px-4 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-green-500"
+                oninput="filtrele()">
+        </div>
+
+        <!-- ANALİZ LİSTESİ -->
+        <div id="analizler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <p class="text-gray-400 col-span-3 text-center py-12">Yükleniyor...</p>
+        </div>
+    </div>
+
+    <!-- DETAY MODAL -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto p-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Analiz Detayı</h2>
+                <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="modal-icerik"></div>
+        </div>
+    </div>
+
+    <script>
+        let tumAnalizler = [];
+
+        async function yukle() {
+            const bahceId = document.getElementById('bahce-filtre').value;
+            const url = bahceId ? `/api/analizler?bahce_id=${bahceId}` : '/api/analizler';
+            const res = await fetch(url);
+            tumAnalizler = await res.json();
+            filtrele();
+        }
+
+        async function bahceleriYukle() {
+            const res = await fetch('/api/bahceler');
+            const bahceler = await res.json();
+            const select = document.getElementById('bahce-filtre');
+            bahceler.forEach(b => {
+                select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
+            });
+        }
+
+        function filtrele() {
+            const arama = document.getElementById('arama').value.toLowerCase();
+            const filtrelenmis = tumAnalizler.filter(a =>
+                a.hastalik_adi.toLowerCase().includes(arama)
+            );
+            goster(filtrelenmis);
+        }
+
+        function goster(analizler) {
+            const div = document.getElementById('analizler');
+            if (analizler.length === 0) {
+                div.innerHTML = '<p class="text-gray-400 col-span-3 text-center py-12">Analiz bulunamadı</p>';
+                return;
+            }
+            div.innerHTML = analizler.map(a => `
+                <div class="bg-white rounded-2xl shadow overflow-hidden cursor-pointer hover:shadow-md transition"
+                    onclick="detayGoster(${a.id})">
+                    <img src="/${a.fotograf_yolu}" class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${a.hastalik_adi === 'Sağlıklı' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${a.hastalik_adi}
+                        </span>
+                        <p class="text-gray-500 text-sm mt-2">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function detayGoster(id) {
+            const analiz = tumAnalizler.find(a => a.id === id);
+            if (!analiz) return;
+            document.getElementById('modal-icerik').innerHTML = `
+                <img src="/${analiz.fotograf_yolu}" class="w-full rounded-xl mb-4 max-h-64 object-cover">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="px-3 py-1 rounded-full text-sm font-medium ${analiz.hastalik_adi === 'Sağlıklı' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        ${analiz.hastalik_adi}
+                    </span>
+                    <span class="text-gray-400 text-sm">${new Date(analiz.tarih).toLocaleDateString('tr-TR')}</span>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
+                    ${analiz.ai_raporu}
+                </div>
+            `;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function modalKapat() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        bahceleriYukle();
+        yukle();
+    </script>
+</body>
+</html>

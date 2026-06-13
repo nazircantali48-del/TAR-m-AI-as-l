@@ -1,0 +1,4 @@
+tarimAI.db
+__pycache__/
+uploads/*
+gizli_anahtar.py
