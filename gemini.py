@@ -2,7 +2,11 @@ import google.genai as genai
 import base64
 from pathlib import Path
 
-from gizli_anahtar import API_KEY
+import os
+try:
+    from gizli_anahtar import API_KEY
+except ImportError:
+    API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 client = genai.Client(api_key=API_KEY)
 
