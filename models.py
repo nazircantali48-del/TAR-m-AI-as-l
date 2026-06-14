@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Boolean
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -19,7 +18,7 @@ class Kullanici(Base):
 class Bahce(Base):
     __tablename__ = "bahceler"
 
-    id = Column(Integer, primary_key=True, index=True),
+    id = Column(Integer, primary_key=True, index=True)
     kullanici_id = Column(Integer, ForeignKey("kullanicilar.id"), nullable=True)
     ad = Column(String, nullable=False)
     konum = Column(String)
@@ -30,7 +29,6 @@ class Bahce(Base):
     analizler = relationship("Analiz", back_populates="bahce")
     ilaclamalar = relationship("Ilaclama", back_populates="bahce")
     kullanici = relationship("Kullanici", back_populates="bahceler")
-
 
 class Analiz(Base):
     __tablename__ = "analizler"
@@ -44,7 +42,6 @@ class Analiz(Base):
 
     bahce = relationship("Bahce", back_populates="analizler")
     ilaclamalar = relationship("Ilaclama", back_populates="analiz")
-
 
 class Ilaclama(Base):
     __tablename__ = "ilaclamalar"
