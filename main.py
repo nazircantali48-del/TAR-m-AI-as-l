@@ -47,6 +47,16 @@ def aktif_kullanici(token: str = Depends(oauth2_scheme), db: Session = Depends(g
 
 Base.metadata.create_all(bind=engine)
 
+# Eksik kolonları otomatik ekle
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE bahceler ADD COLUMN IF NOT EXISTS kullanici_id INTEGER"))
+        conn.execute(text("ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS aktif BOOLEAN DEFAULT TRUE"))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
 app = FastAPI(title="Tarım AI")
 
 os.makedirs("uploads", exist_ok=True)
