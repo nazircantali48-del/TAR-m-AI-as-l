@@ -9,19 +9,19 @@
     <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
 <body class="bg-gray-50">
-
     <nav class="bg-green-700 text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <span class="text-2xl">🌿</span>
                 <span class="text-xl font-bold">Tarım AI</span>
             </div>
-            <div class="flex gap-6">
+            <div class="flex items-center gap-6">
                 <a href="/" class="hover:text-green-200">Dashboard</a>
                 <a href="/analiz" class="hover:text-green-200">Analiz</a>
                 <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
                 <a href="/gecmis" class="font-semibold border-b-2 border-white pb-1">Geçmiş</a>
                 <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+                <button onclick="cikisYap()" class="bg-green-800 px-3 py-1 rounded-lg text-sm hover:bg-green-900">Çıkış</button>
             </div>
         </div>
     </nav>
@@ -44,13 +44,12 @@
         </div>
     </div>
 
-    <!-- DETAY MODAL -->
     <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto p-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Analiz Detayı</h2>
                 <div class="flex gap-2">
-                    <button onclick="raporIndir()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">📄 PDF İndir</button>
+                    <button onclick="raporIndir()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">📄 Rapor İndir</button>
                     <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                 </div>
             </div>
@@ -61,6 +60,16 @@
     <script>
         let tumAnalizler = [];
         let aktifAnalizId = null;
+
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/giris';
+        }
+
+        function cikisYap() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('kullanici_ad');
+            window.location.href = '/giris';
+        }
 
         async function yukle() {
             const bahceId = document.getElementById('bahce-filtre').value;
