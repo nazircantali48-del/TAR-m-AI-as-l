@@ -2,13 +2,48 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 import os
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from database import engine, get_db, Base
-from models import Bahce, Analiz, Ilaclama
+from models import Bahce, Analiz, Ilaclama, Kullanici
 from gemini import analiz_et
+
+SECRET_KEY = "tarim-ai-gizli-anahtar-2026"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+
+def sifre_hashle(sifre):
+    return pwd_context.hash(sifre)
+
+def sifre_dogrula(sifre, hash):
+    return pwd_context.verify(sifre, hash)
+
+def token_olustur(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def aktif_kullanici(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            return None
+        kullanici = db.query(Kullanici).filter(Kullanici.email == email).first()
+        return kullanici
+    except JWTError:
+        return None
 
 Base.metadata.create_all(bind=engine)
 
@@ -42,6 +77,54 @@ def bahceler_sayfasi():
 def ilaclar_sayfasi():
     return FileResponse("frontend/ilaclar.html")
 
+# --- AUTH API ---
+
+@app.post("/api/kayit")
+def kayit_ol(
+    ad: str = Form(...),
+    email: str = Form(...),
+    sifre: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    mevcut = db.query(Kullanici).filter(Kullanici.email == email).first()
+    if mevcut:
+        raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
+    kullanici = Kullanici(
+        ad=ad,
+        email=email,
+        sifre_hash=sifre_hashle(sifre)
+    )
+    db.add(kullanici)
+    db.commit()
+    db.refresh(kullanici)
+    token = token_olustur({"sub": kullanici.email})
+    return {"token": token, "kullanici_ad": kullanici.ad}
+
+@app.post("/api/giris")
+def giris_yap(
+    email: str = Form(...),
+    sifre: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    kullanici = db.query(Kullanici).filter(Kullanici.email == email).first()
+    if not kullanici or not sifre_dogrula(sifre, kullanici.sifre_hash):
+        raise HTTPException(status_code=401, detail="Email veya şifre hatalı")
+    token = token_olustur({"sub": kullanici.email})
+    return {"token": token, "kullanici_ad": kullanici.ad}
+
+@app.get("/api/ben")
+def beni_getir(kullanici: Kullanici = Depends(aktif_kullanici)):
+    if not kullanici:
+        raise HTTPException(status_code=401, detail="Giriş yapılmadı")
+    return {"id": kullanici.id, "ad": kullanici.ad, "email": kullanici.email}
+
+@app.get("/giris")
+def giris_sayfasi():
+    return FileResponse("frontend/giris.html")
+
+@app.get("/kayit")
+def kayit_sayfasi():
+    return FileResponse("frontend/kayit.html")
 
 # --- BAHCE API ---
 
@@ -74,6 +157,14 @@ def bahce_sil(bahce_id: int, db: Session = Depends(get_db)):
 
 
 # --- ANALİZ API ---
+@app.delete("/api/analizler/{analiz_id}")
+def analiz_sil(analiz_id: int, db: Session = Depends(get_db)):
+    analiz = db.query(Analiz).filter(Analiz.id == analiz_id).first()
+    if not analiz:
+        raise HTTPException(status_code=404, detail="Bulunamadı")
+    db.delete(analiz)
+    db.commit()
+    return {"mesaj": "Silindi"}
 
 @app.get("/api/analizler")
 def analizleri_getir(bahce_id: int = None, db: Session = Depends(get_db)):

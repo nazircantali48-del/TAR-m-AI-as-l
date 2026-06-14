@@ -1,12 +1,26 @@
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Boolean
 from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
+class Kullanici(Base):
+    __tablename__ = "kullanicilar"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ad = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
+    sifre_hash = Column(String, nullable=False)
+    aktif = Column(Boolean, default=True)
+    olusturma_tarihi = Column(DateTime, default=datetime.now)
+
+    bahceler = relationship("Bahce", back_populates="kullanici")
+
 class Bahce(Base):
     __tablename__ = "bahceler"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True),
+    kullanici_id = Column(Integer, ForeignKey("kullanicilar.id"), nullable=True)
     ad = Column(String, nullable=False)
     konum = Column(String)
     alan_m2 = Column(Float)
@@ -15,6 +29,7 @@ class Bahce(Base):
 
     analizler = relationship("Analiz", back_populates="bahce")
     ilaclamalar = relationship("Ilaclama", back_populates="bahce")
+    kullanici = relationship("Kullanici", back_populates="bahceler")
 
 
 class Analiz(Base):

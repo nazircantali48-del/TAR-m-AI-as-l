@@ -10,32 +10,30 @@
 </head>
 <body class="bg-gray-50">
 
-    <!-- NAVİGASYON -->
     <nav class="bg-green-700 text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <span class="text-2xl">🌿</span>
                 <span class="text-xl font-bold">Tarım AI</span>
             </div>
-            <div class="flex gap-6">
+            <div class="flex items-center gap-6">
                 <a href="/" class="font-semibold border-b-2 border-white pb-1">Dashboard</a>
                 <a href="/analiz" class="hover:text-green-200">Analiz</a>
                 <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
                 <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
                 <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+                <span id="kullanici-ad" class="text-green-200 text-sm"></span>
+                <button onclick="cikisYap()" class="bg-green-800 px-3 py-1 rounded-lg text-sm hover:bg-green-900">Çıkış</button>
             </div>
         </div>
     </nav>
 
     <div class="max-w-7xl mx-auto px-4 py-8">
-
-        <!-- BAŞLIK -->
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800">Hoş Geldiniz 👋</h1>
             <p class="text-gray-500 mt-1">Tarım AI kontrol paneliniz</p>
         </div>
 
-        <!-- İSTATİSTİK KARTLARI -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-2xl shadow p-6 border-l-4 border-green-500">
                 <p class="text-gray-500 text-sm">Toplam Bahçe</p>
@@ -51,7 +49,6 @@
             </div>
         </div>
 
-        <!-- SON ANALİZLER -->
         <div class="bg-white rounded-2xl shadow p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold text-gray-800">Son Analizler</h2>
@@ -62,7 +59,6 @@
             </div>
         </div>
 
-        <!-- HIZLI ERİŞİM -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a href="/analiz" class="bg-green-600 text-white rounded-2xl p-6 text-center hover:bg-green-700 transition">
                 <div class="text-3xl mb-2">🔍</div>
@@ -84,6 +80,21 @@
     </div>
 
     <script>
+        const token = localStorage.getItem('token');
+        const kullaniciAd = localStorage.getItem('kullanici_ad');
+
+        if (!token) {
+            window.location.href = '/giris';
+        }
+
+        document.getElementById('kullanici-ad').textContent = kullaniciAd ? `👤 ${kullaniciAd}` : '';
+
+        function cikisYap() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('kullanici_ad');
+            window.location.href = '/giris';
+        }
+
         async function yukle() {
             const [bahceler, analizler, ilaclamalar] = await Promise.all([
                 fetch('/api/bahceler').then(r => r.json()),
