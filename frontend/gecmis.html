@@ -30,17 +30,15 @@
         <h1 class="text-3xl font-bold text-gray-800 mb-2">Geçmiş Analizler</h1>
         <p class="text-gray-500 mb-6">Tüm analiz kayıtları</p>
 
-        <!-- FİLTRELER -->
         <div class="bg-white rounded-2xl shadow p-4 mb-6 flex gap-4">
             <select id="bahce-filtre" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" onchange="yukle()">
                 <option value="">Tüm Bahçeler</option>
             </select>
-            <input type="text" id="arama" placeholder="Hastalık ara..." 
+            <input type="text" id="arama" placeholder="Hastalık ara..."
                 class="border border-gray-300 rounded-lg px-4 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-green-500"
                 oninput="filtrele()">
         </div>
 
-        <!-- ANALİZ LİSTESİ -->
         <div id="analizler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <p class="text-gray-400 col-span-3 text-center py-12">Yükleniyor...</p>
         </div>
@@ -51,7 +49,10 @@
         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto p-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Analiz Detayı</h2>
-                <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <div class="flex gap-2">
+                    <button onclick="raporIndir()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">📄 PDF İndir</button>
+                    <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
             </div>
             <div id="modal-icerik"></div>
         </div>
@@ -59,6 +60,7 @@
 
     <script>
         let tumAnalizler = [];
+        let aktifAnalizId = null;
 
         async function yukle() {
             const bahceId = document.getElementById('bahce-filtre').value;
@@ -92,20 +94,24 @@
                 return;
             }
             div.innerHTML = analizler.map(a => `
-                <div class="bg-white rounded-2xl shadow overflow-hidden cursor-pointer hover:shadow-md transition"
-                    onclick="detayGoster(${a.id})">
-                    <img src="/${a.fotograf_yolu}" class="w-full h-48 object-cover">
+                <div class="bg-white rounded-2xl shadow overflow-hidden hover:shadow-md transition">
+                    <img src="/${a.fotograf_yolu}" class="w-full h-48 object-cover cursor-pointer" onclick="detayGoster(${a.id})">
                     <div class="p-4">
                         <span class="px-2 py-1 rounded-full text-xs font-medium ${a.hastalik_adi === 'Sağlıklı' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                             ${a.hastalik_adi}
                         </span>
                         <p class="text-gray-500 text-sm mt-2">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="detayGoster(${a.id})" class="flex-1 bg-blue-100 text-blue-700 py-1 rounded-lg text-sm hover:bg-blue-200">Detay</button>
+                            <button onclick="analizSil(${a.id})" class="flex-1 bg-red-100 text-red-700 py-1 rounded-lg text-sm hover:bg-red-200">Sil</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
         }
 
         function detayGoster(id) {
+            aktifAnalizId = id;
             const analiz = tumAnalizler.find(a => a.id === id);
             if (!analiz) return;
             document.getElementById('modal-icerik').innerHTML = `
@@ -116,11 +122,35 @@
                     </span>
                     <span class="text-gray-400 text-sm">${new Date(analiz.tarih).toLocaleDateString('tr-TR')}</span>
                 </div>
-                <div class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
+                <div id="rapor-icerik" class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
                     ${analiz.ai_raporu}
                 </div>
             `;
             document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function analizSil(id) {
+            if (!confirm('Bu analizi silmek istediğinize emin misiniz?')) return;
+            await fetch(`/api/analizler/${id}`, { method: 'DELETE' });
+            yukle();
+        }
+
+        function raporIndir() {
+            const analiz = tumAnalizler.find(a => a.id === aktifAnalizId);
+            if (!analiz) return;
+            const icerik = `TARIM AI - ANALİZ RAPORU
+========================
+Tarih: ${new Date(analiz.tarih).toLocaleDateString('tr-TR')}
+Hastalık: ${analiz.hastalik_adi}
+
+${analiz.ai_raporu}`;
+            const blob = new Blob([icerik], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tarim-ai-rapor-${analiz.id}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         function modalKapat() {
