@@ -37,7 +37,8 @@ class Analiz(Base):
     bahce_id = Column(Integer, ForeignKey("bahceler.id"))
     fotograf_yolu = Column(String)
     hastalik_adi = Column(String)
-    ai_raporu = Column(Text)
+    risk_skoru = Column(Integer, default=0)
+    tahmin = Column(Text)
     tarih = Column(DateTime, default=datetime.now)
 
     bahce = relationship("Bahce", back_populates="analizler")

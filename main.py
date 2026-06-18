@@ -53,6 +53,8 @@ with engine.connect() as conn:
     try:
         conn.execute(text("ALTER TABLE bahceler ADD COLUMN IF NOT EXISTS kullanici_id INTEGER"))
         conn.execute(text("ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS aktif BOOLEAN DEFAULT TRUE"))
+        conn.execute(text("ALTER TABLE analizler ADD COLUMN IF NOT EXISTS risk_skoru INTEGER DEFAULT 0"))
+        conn.execute(text("ALTER TABLE analizler ADD COLUMN IF NOT EXISTS tahmin TEXT"))
         conn.commit()
     except Exception:
         conn.rollback()
@@ -195,7 +197,15 @@ async def analiz_yap(
     with open(dosya_yolu, "wb") as buffer:
         shutil.copyfileobj(fotograf.file, buffer)
 
-    sonuc = analiz_et(dosya_yolu)
+    # Önceki analizi bul
+    onceki = db.query(Analiz).filter(
+        Analiz.bahce_id == bahce_id
+    ).order_by(Analiz.tarih.desc()).first()
+
+    onceki_fotograf = onceki.fotograf_yolu if onceki else None
+    onceki_rapor = onceki.ai_raporu if onceki else None
+
+    sonuc = analiz_et(dosya_yolu, onceki_fotograf, onceki_rapor)
 
     if not sonuc["basarili"]:
         raise HTTPException(status_code=500, detail=sonuc["hata"])
@@ -204,20 +214,25 @@ async def analiz_yap(
         bahce_id=bahce_id,
         fotograf_yolu=dosya_yolu,
         hastalik_adi=sonuc["hastalik_adi"],
-        ai_raporu=sonuc["rapor"]
+        ai_raporu=sonuc["rapor"],
+        risk_skoru=sonuc.get("risk_skoru", 0),
+        tahmin=sonuc.get("tahmin", "")
     )
     db.add(analiz)
     db.commit()
     db.refresh(analiz)
+
     return {
         "analiz_id": analiz.id,
         "hastalik_adi": analiz.hastalik_adi,
         "rapor": analiz.ai_raporu,
+        "risk_skoru": analiz.risk_skoru,
+        "tahmin": analiz.tahmin,
+        "degisim": sonuc.get("degisim", ""),
         "onerilen_ilac": sonuc.get("onerilen_ilac", ""),
         "onerilen_doz": sonuc.get("onerilen_doz", ""),
         "uygulama_sikligi": sonuc.get("uygulama_sikligi", "")
     }
-
 
 # --- İLAÇLAMA API ---
 

@@ -1,8 +1,8 @@
 import google.genai as genai
 import base64
 from pathlib import Path
-
 import os
+
 try:
     from gizli_anahtar import API_KEY
 except ImportError:
@@ -10,47 +10,64 @@ except ImportError:
 
 client = genai.Client(api_key=API_KEY)
 
-def analiz_et(fotograf_yolu: str) -> dict:
+def fotograf_base64(yol):
+    with open(yol, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+def mime_tip(yol):
+    uzanti = Path(yol).suffix.lower()
+    return {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}.get(uzanti, "image/jpeg")
+
+def analiz_et(fotograf_yolu: str, onceki_fotograf_yolu: str = None, onceki_rapor: str = None) -> dict:
     try:
-        with open(fotograf_yolu, "rb") as f:
-            fotograf_verisi = base64.b64encode(f.read()).decode("utf-8")
+        parts = []
 
-        uzanti = Path(fotograf_yolu).suffix.lower()
-        mime_tipleri = {
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".png": "image/png",
-        }
-        mime_tip = mime_tipleri.get(uzanti, "image/jpeg")
+        # Mevcut fotoğraf
+        parts.append({
+            "inline_data": {
+                "mime_type": mime_tip(fotograf_yolu),
+                "data": fotograf_base64(fotograf_yolu)
+            }
+        })
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=[
-                {
-                    "parts": [
-                        {
-                            "inline_data": {
-                                "mime_type": mime_tip,
-                                "data": fotograf_verisi,
-                            }
-                        },
-                        {
-                            "text": """Bu bitkide/meyvede hastalık var mı? 
-                            Lütfen tam olarak şu formatta yanıtla, başka hiçbir şey ekleme:
+        # Önceki fotoğraf varsa ekle
+        if onceki_fotograf_yolu and os.path.exists(onceki_fotograf_yolu):
+            parts.append({
+                "inline_data": {
+                    "mime_type": mime_tip(onceki_fotograf_yolu),
+                    "data": fotograf_base64(onceki_fotograf_yolu)
+                }
+            })
+            karsilastirma_talimat = f"""
+İlk fotoğraf: MEVCUT durum (bugün çekildi)
+İkinci fotoğraf: ÖNCEKİ durum ({onceki_rapor[:100] if onceki_rapor else 'önceki analiz'})
 
-HASTALIK: (SADECE hastalığın kısa adını yaz, örnek: Külleme, Citrus Canker, Yeşillenme. Sorun yoksa tek kelime 'Sağlıklı' yaz. Açıklama veya parantez YAZMA.)
+Bu iki fotoğrafı karşılaştırarak analiz yap."""
+        else:
+            karsilastirma_talimat = "Bu bitkinin ilk analizi yapılıyor."
+
+        parts.append({
+            "text": f"""Sen bir bitki hastalığı uzmanısın. {karsilastirma_talimat}
+
+Lütfen TAM OLARAK şu formatta yanıtla, başka hiçbir şey ekleme:
+
+HASTALIK: (SADECE hastalığın kısa adını yaz, örnek: Külleme, Citrus Canker. Sorun yoksa 'Sağlıklı' yaz)
 AÇIKLAMA: (2-3 cümle açıklama)
 BELİRTİLER: (görülen belirtiler)
 NEDEN: (hastalığın nedenleri)
+DEĞİŞİM: (önceki fotoğrafa göre ne değişti? İlk analizse 'İlk analiz' yaz)
+TAHMİN: (2 hafta içinde ne olabilir? Risk artıyor mu, azalıyor mu?)
+RİSK_SKORU: (1-10 arası sayı. 1=çok düşük risk, 10=acil müdahale gerekli. SADECE SAYI yaz)
 TEDAVİ: (tedavi yöntemleri)
-ÖNERİLEN_İLAÇ: (en uygun ilaç adı, sadece ilaç adı)
-ÖNERİLEN_DOZ: (örn: 2g/L su, 10ml/100L su gibi)
-UYGULAMA_SIKLIĞI: (örn: 7 günde bir, 2 haftada bir)
-ÇEVRE_ANALİZİ: (fotoğrafta yabancı ot, istilacı bitki, toprak/sulama sorunu gibi çevresel riskler var mı? Varsa ne olduğunu, neden risk oluşturduğunu ve ne yapılması gerektiğini yaz. Sorun yoksa 'Çevresel risk gözlenmedi' yaz)"""
-                        }
-                    ]
-                }
-            ]
+ÖNERİLEN_İLAÇ: (en uygun ilaç adı)
+ÖNERİLEN_DOZ: (örn: 2g/L su)
+UYGULAMA_SIKLIĞI: (örn: 7 günde bir)
+ÇEVRE_ANALİZİ: (yabancı ot, toprak/sulama sorunu var mı? Yoksa 'Çevresel risk gözlenmedi' yaz)"""
+        })
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=[{"parts": parts}]
         )
 
         rapor = response.text
@@ -65,17 +82,23 @@ UYGULAMA_SIKLIĞI: (örn: 7 günde bir, 2 haftada bir)
         if hastalik_adi.startswith("("):
             hastalik_adi = "Bilinmiyor"
 
-        onerilen_ilac = satir_deger("ÖNERİLEN_İLAÇ")
-        onerilen_doz = satir_deger("ÖNERİLEN_DOZ")
-        uygulama_sikligi = satir_deger("UYGULAMA_SIKLIĞI")
+        risk_str = satir_deger("RİSK_SKORU")
+        try:
+            risk_skoru = int(''.join(filter(str.isdigit, risk_str)))
+            risk_skoru = max(1, min(10, risk_skoru))
+        except:
+            risk_skoru = 5
 
         return {
             "basarili": True,
             "hastalik_adi": hastalik_adi,
             "rapor": rapor,
-            "onerilen_ilac": onerilen_ilac,
-            "onerilen_doz": onerilen_doz,
-            "uygulama_sikligi": uygulama_sikligi
+            "risk_skoru": risk_skoru,
+            "tahmin": satir_deger("TAHMİN"),
+            "degisim": satir_deger("DEĞİŞİM"),
+            "onerilen_ilac": satir_deger("ÖNERİLEN_İLAÇ"),
+            "onerilen_doz": satir_deger("ÖNERİLEN_DOZ"),
+            "uygulama_sikligi": satir_deger("UYGULAMA_SIKLIĞI")
         }
 
     except Exception as e:
