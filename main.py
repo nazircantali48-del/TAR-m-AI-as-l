@@ -1,3 +1,5 @@
+from hava import hava_durumu_al, hastalik_riski_hesapla
+from email_bildirim import analiz_emaili_gonder
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -7,7 +9,8 @@ import shutil
 import os
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
 
 from database import engine, get_db, Base
 from models import Bahce, Analiz, Ilaclama, Kullanici
@@ -47,14 +50,13 @@ def aktif_kullanici(token: str = Depends(oauth2_scheme), db: Session = Depends(g
 
 Base.metadata.create_all(bind=engine)
 
-# Eksik kolonları otomatik ekle
-from sqlalchemy import text
 with engine.connect() as conn:
     try:
         conn.execute(text("ALTER TABLE bahceler ADD COLUMN IF NOT EXISTS kullanici_id INTEGER"))
         conn.execute(text("ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS aktif BOOLEAN DEFAULT TRUE"))
         conn.execute(text("ALTER TABLE analizler ADD COLUMN IF NOT EXISTS risk_skoru INTEGER DEFAULT 0"))
         conn.execute(text("ALTER TABLE analizler ADD COLUMN IF NOT EXISTS tahmin TEXT"))
+        conn.execute(text("ALTER TABLE analizler ADD COLUMN IF NOT EXISTS ai_raporu TEXT"))
         conn.commit()
     except Exception:
         conn.rollback()
@@ -89,6 +91,15 @@ def bahceler_sayfasi():
 def ilaclar_sayfasi():
     return FileResponse("frontend/ilaclar.html")
 
+@app.get("/giris")
+def giris_sayfasi():
+    return FileResponse("frontend/giris.html")
+
+@app.get("/kayit")
+def kayit_sayfasi():
+    return FileResponse("frontend/kayit.html")
+
+
 # --- AUTH API ---
 
 @app.post("/api/kayit")
@@ -101,11 +112,7 @@ def kayit_ol(
     mevcut = db.query(Kullanici).filter(Kullanici.email == email).first()
     if mevcut:
         raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
-    kullanici = Kullanici(
-        ad=ad,
-        email=email,
-        sifre_hash=sifre_hashle(sifre)
-    )
+    kullanici = Kullanici(ad=ad, email=email, sifre_hash=sifre_hashle(sifre))
     db.add(kullanici)
     db.commit()
     db.refresh(kullanici)
@@ -130,13 +137,6 @@ def beni_getir(kullanici: Kullanici = Depends(aktif_kullanici)):
         raise HTTPException(status_code=401, detail="Giriş yapılmadı")
     return {"id": kullanici.id, "ad": kullanici.ad, "email": kullanici.email}
 
-@app.get("/giris")
-def giris_sayfasi():
-    return FileResponse("frontend/giris.html")
-
-@app.get("/kayit")
-def kayit_sayfasi():
-    return FileResponse("frontend/kayit.html")
 
 # --- BAHCE API ---
 
@@ -169,6 +169,7 @@ def bahce_sil(bahce_id: int, db: Session = Depends(get_db)):
 
 
 # --- ANALİZ API ---
+
 @app.delete("/api/analizler/{analiz_id}")
 def analiz_sil(analiz_id: int, db: Session = Depends(get_db)):
     analiz = db.query(Analiz).filter(Analiz.id == analiz_id).first()
@@ -197,13 +198,19 @@ async def analiz_yap(
     with open(dosya_yolu, "wb") as buffer:
         shutil.copyfileobj(fotograf.file, buffer)
 
-    # Önceki analizi bul
     onceki = db.query(Analiz).filter(
         Analiz.bahce_id == bahce_id
     ).order_by(Analiz.tarih.desc()).first()
 
     onceki_fotograf = onceki.fotograf_yolu if onceki else None
     onceki_rapor = onceki.ai_raporu if onceki else None
+
+    hava = hava_durumu_al(37.0, 35.0)
+    hava_ozeti = hava.get("ozet", "") if hava["basarili"] else ""
+    hava_riski = hastalik_riski_hesapla(
+        hava.get("nem", 0),
+        hava.get("sicaklik", 0)
+    ) if hava["basarili"] else ""
 
     sonuc = analiz_et(dosya_yolu, onceki_fotograf, onceki_rapor)
 
@@ -222,6 +229,22 @@ async def analiz_yap(
     db.commit()
     db.refresh(analiz)
 
+    try:
+        bahce = db.query(Bahce).filter(Bahce.id == bahce_id).first()
+        if bahce and bahce.kullanici_id:
+            kullanici = db.query(Kullanici).filter(Kullanici.id == bahce.kullanici_id).first()
+            if kullanici and kullanici.email:
+                analiz_emaili_gonder(
+                    kullanici.email,
+                    kullanici.ad,
+                    analiz.hastalik_adi,
+                    analiz.risk_skoru,
+                    analiz.tahmin,
+                    bahce.ad
+                )
+    except Exception as e:
+        print(f"Email gönderilemedi: {e}")
+
     return {
         "analiz_id": analiz.id,
         "hastalik_adi": analiz.hastalik_adi,
@@ -234,10 +257,11 @@ async def analiz_yap(
         "uygulama_sikligi": sonuc.get("uygulama_sikligi", "")
     }
 
+
 # --- İLAÇLAMA API ---
 
 @app.get("/api/ilaclamalar")
-def ilaçlamalari_getir(bahce_id: int = None, db: Session = Depends(get_db)):
+def ilaclamalari_getir(bahce_id: int = None, db: Session = Depends(get_db)):
     query = db.query(Ilaclama)
     if bahce_id:
         query = query.filter(Ilaclama.bahce_id == bahce_id)
