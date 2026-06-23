@@ -301,6 +301,12 @@ def ilaclama_sil(ilaclama_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"mesaj": "Silindi"}
 
+@app.get("/api/proaktif-kontrol")
+def proaktif_kontrol():
+    """Render Cron Job bu endpoint'i her gün çağırır"""
+    from proaktif import yuksek_riskli_kontrol
+    yuksek_riskli_kontrol()
+    return {"mesaj": "Kontrol tamamlandı"}
 
 if __name__ == "__main__":
     import uvicorn
