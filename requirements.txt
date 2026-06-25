@@ -5,6 +5,7 @@ python-multipart
 pillow
 google-genai
 psycopg2-binary
-bcrypt==4.0.1
-passlib
+passlib[bcrypt]
 python-jose[cryptography]
+requests
+ultralytics

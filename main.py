@@ -1,12 +1,13 @@
 from hava import hava_durumu_al, hastalik_riski_hesapla
 from email_bildirim import analiz_emaili_gonder
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import shutil
 import os
+import requests
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
@@ -15,6 +16,7 @@ from sqlalchemy import text
 from database import engine, get_db, Base
 from models import Bahce, Analiz, Ilaclama, Kullanici
 from gemini import analiz_et
+from ultralytics import YOLO
 
 SECRET_KEY = "tarim-ai-gizli-anahtar-2026"
 ALGORITHM = "HS256"
@@ -31,7 +33,7 @@ def sifre_dogrula(sifre, hash):
 
 def token_olustur(data: dict):
     to_encode = data.copy()
-    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -63,131 +65,110 @@ with engine.connect() as conn:
 
 app = FastAPI(title="Tarım AI")
 
+SUPABASE_MODEL_URL = "https://your-project-id.supabase.co/storage/v1/object/public/models/best.pt"
+MODEL_DIR = "models"
+MODEL_PATH = os.path.join(MODEL_DIR, "best.pt")
+
+def yolo_modeli_hazirla():
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    if os.path.exists(MODEL_PATH) and os.path.getsize(MODEL_PATH) > 1000000:
+        print("🚀 YOLOv8 Modeli yerel diskte bulundu.")
+    else:
+        print("📥 YOLOv8 Modeli Supabase'den kalıcı olarak indiriliyor...")
+        try:
+            with requests.get(SUPABASE_MODEL_URL, stream=True) as r:
+                r.raise_for_status()
+                with open(MODEL_PATH, 'wb') as f:
+                    shutil.copyfileobj(r.raw, f)
+            print("✅ Model kaydedildi!")
+        except Exception as e:
+            print(f"⚠️ Hata: {e}, varsayılan yolov8n.pt yükleniyor.")
+            return YOLO("yolov8n.pt")
+    return YOLO(MODEL_PATH)
+
+yolo_model = yolo_modeli_hazirla()
 os.makedirs("uploads", exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-
-# --- SAYFALAR ---
-
+# --- PAGES ---
 @app.get("/")
-def ana_sayfa():
-    return FileResponse("frontend/index.html")
+def ana_sayfa(): return FileResponse("frontend/index.html")
 
 @app.get("/analiz")
-def analiz_sayfasi():
-    return FileResponse("frontend/analiz.html")
+def analiz_sayfasi(): return FileResponse("frontend/analiz.html")
 
 @app.get("/gecmis")
-def gecmis_sayfasi():
-    return FileResponse("frontend/gecmis.html")
+def gecmis_sayfasi(): return FileResponse("frontend/gecmis.html")
 
 @app.get("/bahceler")
-def bahceler_sayfasi():
-    return FileResponse("frontend/bahceler.html")
-
-@app.get("/ilaclar")
-def ilaclar_sayfasi():
-    return FileResponse("frontend/ilaclar.html")
+def bahceler_sayfasi(): return FileResponse("frontend/bahceler.html")
 
 @app.get("/giris")
-def giris_sayfasi():
-    return FileResponse("frontend/giris.html")
+def giris_sayfasi(): return FileResponse("frontend/giris.html")
 
 @app.get("/kayit")
-def kayit_sayfasi():
-    return FileResponse("frontend/kayit.html")
+def kayit_sayfasi(): return FileResponse("frontend/kayit.html")
 
 
 # --- AUTH API ---
-
 @app.post("/api/kayit")
-def kayit_ol(
-    ad: str = Form(...),
-    email: str = Form(...),
-    sifre: str = Form(...),
-    db: Session = Depends(get_db)
-):
+def kayit_ol(ad: str = Form(...), email: str = Form(...), sifre: str = Form(...), db: Session = Depends(get_db)):
     mevcut = db.query(Kullanici).filter(Kullanici.email == email).first()
-    if mevcut:
-        raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
+    if mevcut: raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
     kullanici = Kullanici(ad=ad, email=email, sifre_hash=sifre_hashle(sifre))
     db.add(kullanici)
     db.commit()
     db.refresh(kullanici)
-    token = token_olustur({"sub": kullanici.email})
-    return {"token": token, "kullanici_ad": kullanici.ad}
+    return {"token": token_olustur({"sub": kullanici.email}), "kullanici_ad": kullanici.ad}
 
 @app.post("/api/giris")
-def giris_yap(
-    email: str = Form(...),
-    sifre: str = Form(...),
-    db: Session = Depends(get_db)
-):
+def giris_yap(email: str = Form(...), sifre: str = Form(...), db: Session = Depends(get_db)):
     kullanici = db.query(Kullanici).filter(Kullanici.email == email).first()
     if not kullanici or not sifre_dogrula(sifre, kullanici.sifre_hash):
         raise HTTPException(status_code=401, detail="Email veya şifre hatalı")
-    token = token_olustur({"sub": kullanici.email})
-    return {"token": token, "kullanici_ad": kullanici.ad}
+    return {"token": token_olustur({"sub": kullanici.email}), "kullanici_ad": kullanici.ad}
 
 @app.get("/api/ben")
 def beni_getir(kullanici: Kullanici = Depends(aktif_kullanici)):
-    if not kullanici:
-        raise HTTPException(status_code=401, detail="Giriş yapılmadı")
+    if not kullanici: raise HTTPException(status_code=401, detail="Giriş yapılmadı")
     return {"id": kullanici.id, "ad": kullanici.ad, "email": kullanici.email}
 
 
 # --- BAHCE API ---
-
 @app.get("/api/bahceler")
-def bahceleri_getir(db: Session = Depends(get_db)):
-    return db.query(Bahce).all()
+def bahceleri_getir(kullanici: Kullanici = Depends(aktif_kullanici), db: Session = Depends(get_db)):
+    if not kullanici: raise HTTPException(status_code=401, detail="Yetkisiz erişim")
+    return db.query(Bahce).filter(Bahce.kullanici_id == kullanici.id).all()
 
 @app.post("/api/bahceler")
 def bahce_ekle(
-    ad: str = Form(...),
-    konum: str = Form(""),
-    alan_m2: float = Form(0),
-    notlar: str = Form(""),
-    db: Session = Depends(get_db)
+    ad: str = Form(...), konum: str = Form(""), alan_m2: float = Form(0), notlar: str = Form(""),
+    kullanici: Kullanici = Depends(aktif_kullanici), db: Session = Depends(get_db)
 ):
-    bahce = Bahce(ad=ad, konum=konum, alan_m2=alan_m2, notlar=notlar)
+    if not kullanici: raise HTTPException(status_code=401, detail="Önce giriş yapmalısınız")
+    # GELECEKTEKİ HATA ÖNLENDİ: Bahçe artık doğrudan giriş yapan kullanıcıya bağlanıyor
+    bahce = Bahce(ad=ad, konum=konum, alan_m2=alan_m2, notlar=notlar, kullanici_id=kullanici.id)
     db.add(bahce)
     db.commit()
     db.refresh(bahce)
     return bahce
 
 @app.delete("/api/bahceler/{bahce_id}")
-def bahce_sil(bahce_id: int, db: Session = Depends(get_db)):
-    bahce = db.query(Bahce).filter(Bahce.id == bahce_id).first()
-    if not bahce:
-        raise HTTPException(status_code=404, detail="Bahçe bulunamadı")
+def bahce_sil(bahce_id: int, kullanici: Kullanici = Depends(aktif_kullanici), db: Session = Depends(get_db)):
+    if not kullanici: raise HTTPException(status_code=401)
+    bahce = db.query(Bahce).filter(Bahce.id == bahce_id, Bahce.kullanici_id == kullanici.id).first()
+    if not bahce: raise HTTPException(status_code=404, detail="Bahçe bulunamadı")
     db.delete(bahce)
     db.commit()
     return {"mesaj": "Silindi"}
 
 
 # --- ANALİZ API ---
-
-@app.delete("/api/analizler/{analiz_id}")
-def analiz_sil(analiz_id: int, db: Session = Depends(get_db)):
-    analiz = db.query(Analiz).filter(Analiz.id == analiz_id).first()
-    if not analiz:
-        raise HTTPException(status_code=404, detail="Bulunamadı")
-    db.delete(analiz)
-    db.commit()
-    return {"mesaj": "Silindi"}
-
-@app.get("/api/analizler")
-def analizleri_getir(bahce_id: int = None, db: Session = Depends(get_db)):
-    query = db.query(Analiz)
-    if bahce_id:
-        query = query.filter(Analiz.bahce_id == bahce_id)
-    return query.order_by(Analiz.tarih.desc()).all()
-
 @app.post("/api/analiz")
 async def analiz_yap(
+    background_tasks: BackgroundTasks, # Arka plan iş yükü yöneticisi eklendi
     fotograf: UploadFile = File(...),
     bahce_id: int = Form(...),
     db: Session = Depends(get_db)
@@ -198,21 +179,32 @@ async def analiz_yap(
     with open(dosya_yolu, "wb") as buffer:
         shutil.copyfileobj(fotograf.file, buffer)
 
-    onceki = db.query(Analiz).filter(
-        Analiz.bahce_id == bahce_id
-    ).order_by(Analiz.tarih.desc()).first()
+    bahce = db.query(Bahce).filter(Bahce.id == bahce_id).first()
+    lat, lon = 37.0, 35.0
+    if bahce and bahce.konum and "," in bahce.konum:
+        try:
+            lat_str, lon_str = bahce.konum.split(",")
+            lat, lon = float(lat_str.strip()), float(lon_str.strip())
+        except ValueError: pass
 
+    hava = hava_durumu_al(lat, lon)
+    hava_ozeti = hava.get("ozet", "") if hava["basarili"] else ""
+
+    yolo_sonuc = yolo_model(dosya_yolu, conf=0.25)[0]
+    yolo_tahmini_sinif = "Bilinmeyen Durum"
+    yolo_guven_skoru = 0.0
+    
+    if len(yolo_sonuc.boxes) > 0:
+        best_box = yolo_sonuc.boxes[0]
+        class_id = int(best_box.cls[0].item())
+        yolo_guven_skoru = float(best_box.conf[0].item())
+        yolo_tahmini_sinif = yolo_sonuc.names[class_id]
+
+    onceki = db.query(Analiz).filter(Analiz.bahce_id == bahce_id).order_by(Analiz.tarih.desc()).first()
     onceki_fotograf = onceki.fotograf_yolu if onceki else None
     onceki_rapor = onceki.ai_raporu if onceki else None
 
-    hava = hava_durumu_al(37.0, 35.0)
-    hava_ozeti = hava.get("ozet", "") if hava["basarili"] else ""
-    hava_riski = hastalik_riski_hesapla(
-        hava.get("nem", 0),
-        hava.get("sicaklik", 0)
-    ) if hava["basarili"] else ""
-
-    sonuc = analiz_et(dosya_yolu, onceki_fotograf, onceki_rapor)
+    sonuc = analiz_et(dosya_yolu, onceki_fotograf, onceki_rapor, yolo_etiket=yolo_tahmini_sinif, hava_durumu=hava_ozeti)
 
     if not sonuc["basarili"]:
         raise HTTPException(status_code=500, detail=sonuc["hata"])
@@ -220,30 +212,28 @@ async def analiz_yap(
     analiz = Analiz(
         bahce_id=bahce_id,
         fotograf_yolu=dosya_yolu,
-        hastalik_adi=sonuc["hastalik_adi"],
+        hastalik_adi=sonuc["hastalik_adi"] if sonuc["hastalik_adi"] else yolo_tahmini_sinif,
         ai_raporu=sonuc["rapor"],
-        risk_skoru=sonuc.get("risk_skoru", 0),
-        tahmin=sonuc.get("tahmin", "")
+        risk_skoru=sonuc.get("risk_skoru", int(yolo_guven_skoru * 100)),
+        tahmin=yolo_tahmini_sinif
     )
     db.add(analiz)
     db.commit()
     db.refresh(analiz)
 
-    try:
-        bahce = db.query(Bahce).filter(Bahce.id == bahce_id).first()
-        if bahce and bahce.kullanici_id:
-            kullanici = db.query(Kullanici).filter(Kullanici.id == bahce.kullanici_id).first()
-            if kullanici and kullanici.email:
-                analiz_emaili_gonder(
-                    kullanici.email,
-                    kullanici.ad,
-                    analiz.hastalik_adi,
-                    analiz.risk_skoru,
-                    analiz.tahmin,
-                    bahce.ad
-                )
-    except Exception as e:
-        print(f"Email gönderilemedi: {e}")
+    # İLERİ SEVİYE OPTİMİZASYON: E-posta gönderimi BackgroundTasks'e atandı (Kilitlenme Önleme)
+    if bahce and bahce.kullanici_id:
+        kullanici = db.query(Kullanici).filter(Kullanici.id == bahce.kullanici_id).first()
+        if kullanici and kullanici.email:
+            background_tasks.add_task(
+                analiz_emaili_gonder,
+                kullanici.email,
+                kullanici.ad,
+                analiz.hastalik_adi,
+                analiz.risk_skoru,
+                analiz.tahmin,
+                bahce.ad
+            )
 
     return {
         "analiz_id": analiz.id,
@@ -257,53 +247,22 @@ async def analiz_yap(
         "uygulama_sikligi": sonuc.get("uygulama_sikligi", "")
     }
 
+@app.get("/api/analizler")
+def analizleri_getir(bahce_id: int = None, db: Session = Depends(get_db)):
+    query = db.query(Analiz)
+    if bahce_id: query = query.filter(Analiz.bahce_id == bahce_id)
+    return query.order_by(Analiz.tarih.desc()).all()
 
-# --- İLAÇLAMA API ---
-
-@app.get("/api/ilaclamalar")
-def ilaclamalari_getir(bahce_id: int = None, db: Session = Depends(get_db)):
-    query = db.query(Ilaclama)
-    if bahce_id:
-        query = query.filter(Ilaclama.bahce_id == bahce_id)
-    return query.order_by(Ilaclama.uygulama_tarihi.desc()).all()
-
-@app.post("/api/ilaclamalar")
-def ilaclama_ekle(
-    bahce_id: int = Form(...),
-    analiz_id: int = Form(None),
-    ilac_adi: str = Form(...),
-    doz: str = Form(""),
-    uygulama_tarihi: str = Form(...),
-    sonraki_tarih: str = Form(""),
-    notlar: str = Form(""),
-    db: Session = Depends(get_db)
-):
-    ilaclama = Ilaclama(
-        bahce_id=bahce_id,
-        analiz_id=analiz_id,
-        ilac_adi=ilac_adi,
-        doz=doz,
-        uygulama_tarihi=datetime.fromisoformat(uygulama_tarihi),
-        sonraki_tarih=datetime.fromisoformat(sonraki_tarih) if sonraki_tarih else None,
-        notlar=notlar
-    )
-    db.add(ilaclama)
-    db.commit()
-    db.refresh(ilaclama)
-    return ilaclama
-
-@app.delete("/api/ilaclamalar/{ilaclama_id}")
-def ilaclama_sil(ilaclama_id: int, db: Session = Depends(get_db)):
-    ilaclama = db.query(Ilaclama).filter(Ilaclama.id == ilaclama_id).first()
-    if not ilaclama:
-        raise HTTPException(status_code=404, detail="Bulunamadı")
-    db.delete(ilaclama)
+@app.delete("/api/analizler/{analiz_id}")
+def analiz_sil(analiz_id: int, db: Session = Depends(get_db)):
+    analiz = db.query(Analiz).filter(Analiz.id == analiz_id).first()
+    if not analiz: raise HTTPException(status_code=404)
+    db.delete(analiz)
     db.commit()
     return {"mesaj": "Silindi"}
 
 @app.get("/api/proaktif-kontrol")
 def proaktif_kontrol():
-    """Render Cron Job bu endpoint'i her gün çağırır"""
     from proaktif import yuksek_riskli_kontrol
     yuksek_riskli_kontrol()
     return {"mesaj": "Kontrol tamamlandı"}

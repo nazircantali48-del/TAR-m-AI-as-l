@@ -16,12 +16,13 @@
                 <span class="text-2xl">🌿</span>
                 <span class="text-xl font-bold">Tarım AI</span>
             </div>
-            <div class="flex gap-6">
+            <div class="flex items-center gap-6">
                 <a href="/" class="hover:text-green-200">Dashboard</a>
                 <a href="/analiz" class="font-semibold border-b-2 border-white pb-1">Analiz</a>
                 <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
                 <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
                 <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+                <button onclick="cikisYap()" class="bg-green-800 px-3 py-1 rounded-lg text-sm hover:bg-green-900">Çıkış</button>
             </div>
         </div>
     </nav>
@@ -66,13 +67,43 @@
     </div>
 
     <script>
-        async function bahceleriYukle() {
-            const res = await fetch('/api/bahceler');
-            const bahceler = await res.json();
-            const select = document.getElementById('bahce-sec');
-            bahceler.forEach(b => {
-                select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
+        // Giriş kontrolü
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/giris';
+
+        function cikisYap() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('kullanici_ad');
+            window.location.href = '/giris';
+        }
+
+        // Token ile istek yapan yardımcı fonksiyon
+        function tokenliIstek(url, ayarlar = {}) {
+            return fetch(url, {
+                ...ayarlar,
+                headers: {
+                    ...(ayarlar.headers || {}),
+                    'Authorization': `Bearer ${token}`
+                }
             });
+        }
+
+        async function bahceleriYukle() {
+            try {
+                const res = await tokenliIstek('/api/bahceler');
+                if (res.status === 401) { window.location.href = '/giris'; return; }
+                const bahceler = await res.json();
+                const select = document.getElementById('bahce-sec');
+                if (bahceler.length === 0) {
+                    select.innerHTML = '<option value="">Önce bahçe ekleyin</option>';
+                    return;
+                }
+                bahceler.forEach(b => {
+                    select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
+                });
+            } catch (e) {
+                console.error('Bahçeler yüklenemedi:', e);
+            }
         }
 
         function fotografSec(event) {
@@ -97,55 +128,99 @@
 
             const btn = document.getElementById('analiz-btn');
             btn.disabled = true;
-            btn.textContent = '⏳ Analiz ediliyor...';
+            btn.textContent = '⏳ Analiz ediliyor... (30-60 sn sürebilir)';
 
             const form = new FormData();
             form.append('fotograf', fotograf);
             form.append('bahce_id', bahceId);
 
             try {
-                const res = await fetch('/api/analiz', { method: 'POST', body: form });
+                const res = await tokenliIstek('/api/analiz', { method: 'POST', body: form });
                 const veri = await res.json();
+
+                if (!res.ok) {
+                    alert('Hata: ' + (veri.detail || 'Analiz başarısız'));
+                    return;
+                }
 
                 const sonucDiv = document.getElementById('sonuc');
                 const icerik = document.getElementById('sonuc-icerik');
                 sonucDiv.classList.remove('hidden');
+                sonucDiv.scrollIntoView({ behavior: 'smooth' });
 
                 const saglikli = veri.hastalik_adi === 'Sağlıklı';
                 const risk = veri.risk_skoru || 0;
                 const riskRenk = risk <= 3 ? 'bg-green-500' : risk <= 6 ? 'bg-yellow-500' : 'bg-red-500';
                 const riskYazi = risk <= 3 ? 'Düşük Risk' : risk <= 6 ? 'Orta Risk' : 'Yüksek Risk — Acil Müdahale!';
+                const riskMetinRenk = risk <= 3 ? 'text-green-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600';
+
+                // YOLOv8 tahmin etiketi temizleme
+                const yoloEtiket = veri.tahmin
+                    ? veri.tahmin.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    : '';
 
                 icerik.innerHTML = `
-                    <div class="flex items-center justify-between mb-4">
+                    <!-- Risk Skoru Başlık -->
+                    <div class="flex items-center justify-between mb-6 p-4 rounded-xl ${saglikli ? 'bg-green-50' : risk > 6 ? 'bg-red-50' : 'bg-yellow-50'}">
                         <div class="flex items-center gap-3">
-                            <span class="text-3xl">${saglikli ? '✅' : '⚠️'}</span>
-                            <p class="font-bold text-xl ${saglikli ? 'text-green-600' : 'text-red-600'}">${veri.hastalik_adi}</p>
+                            <span class="text-3xl">${saglikli ? '✅' : risk > 6 ? '🚨' : '⚠️'}</span>
+                            <div>
+                                <p class="font-bold text-xl ${saglikli ? 'text-green-600' : 'text-red-600'}">${veri.hastalik_adi}</p>
+                                ${yoloEtiket ? `<p class="text-xs text-gray-400 mt-0.5">Model tespiti: ${yoloEtiket}</p>` : ''}
+                            </div>
                         </div>
                         <div class="text-right">
                             <div class="text-sm text-gray-500 mb-1">Risk Skoru</div>
                             <div class="flex items-center gap-2">
                                 <div class="w-24 bg-gray-200 rounded-full h-3">
-                                    <div class="${riskRenk} h-3 rounded-full" style="width: ${risk * 10}%"></div>
+                                    <div class="${riskRenk} h-3 rounded-full transition-all" style="width: ${risk * 10}%"></div>
                                 </div>
                                 <span class="font-bold text-lg">${risk}/10</span>
                             </div>
-                            <div class="text-xs font-medium mt-1 ${risk <= 3 ? 'text-green-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600'}">${riskYazi}</div>
+                            <div class="text-xs font-medium mt-1 ${riskMetinRenk}">${riskYazi}</div>
                         </div>
                     </div>
+
+                    <!-- Değişim (önceki analize göre) -->
                     ${veri.degisim && veri.degisim !== 'İlk analiz' ? `
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                         <p class="font-semibold text-blue-800 mb-1">📊 Önceki analize göre değişim:</p>
                         <p class="text-blue-700 text-sm">${veri.degisim}</p>
-                    </div>` : ''}
+                    </div>` : `
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
+                        <p class="text-gray-500 text-sm">📋 İlk analiz — karşılaştırma için geçmiş kayıt yok</p>
+                    </div>`}
+
+                    <!-- 2 Haftalık Tahmin -->
                     ${veri.tahmin ? `
                     <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
                         <p class="font-semibold text-yellow-800 mb-1">🔮 2 hafta sonra tahmin:</p>
                         <p class="text-yellow-700 text-sm">${veri.tahmin}</p>
                     </div>` : ''}
+
+                    <!-- Önerilen İlaç Kutusu -->
+                    ${!saglikli && veri.onerilen_ilac ? `
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4 grid grid-cols-3 gap-3">
+                        <div>
+                            <p class="text-xs text-purple-500 font-medium mb-1">💊 Önerilen İlaç</p>
+                            <p class="text-purple-800 font-semibold text-sm">${veri.onerilen_ilac}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-purple-500 font-medium mb-1">⚖️ Doz</p>
+                            <p class="text-purple-800 font-semibold text-sm">${veri.onerilen_doz || '—'}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-purple-500 font-medium mb-1">📅 Uygulama Sıklığı</p>
+                            <p class="text-purple-800 font-semibold text-sm">${veri.uygulama_sikligi || '—'}</p>
+                        </div>
+                    </div>` : ''}
+
+                    <!-- Tam Rapor -->
                     <div class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed mb-4">
                         ${veri.rapor}
                     </div>
+
+                    <!-- Tedavi Kayıt Formu -->
                     ${!saglikli ? `
                     <div class="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
                         <h3 class="font-semibold text-orange-800 mb-4">💊 Tedavi Kaydı Oluştur</h3>
@@ -182,7 +257,7 @@
                 `;
 
             } catch (e) {
-                alert('Hata oluştu: ' + e.message);
+                alert('Bağlantı hatası: ' + e.message);
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🔍 Analiz Et';
@@ -203,16 +278,16 @@
             form.append('ilac_adi', ilacAdi);
             form.append('doz', doz);
             form.append('uygulama_tarihi', tarih);
-            form.append('sonraki_tarih', sonraki);
+            if (sonraki) form.append('sonraki_tarih', sonraki);
             form.append('notlar', 'AI analizi sonucu oluşturuldu');
 
-            const res = await fetch('/api/ilaclamalar', { method: 'POST', body: form });
+            const res = await tokenliIstek('/api/ilaclamalar', { method: 'POST', body: form });
 
             if (res.ok) {
                 alert('✅ Tedavi ilaçlama takibine eklendi!');
                 window.location.href = '/ilaclar';
             } else {
-                alert('Hata oluştu!');
+                alert('Kayıt hatası oluştu!');
             }
         }
 

@@ -31,7 +31,9 @@
         <p class="text-gray-500 mb-6">Tüm analiz kayıtları</p>
 
         <div class="bg-white rounded-2xl shadow p-4 mb-6 flex gap-4">
-            <select id="bahce-filtre" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" onchange="yukle()">
+            <select id="bahce-filtre"
+                class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                onchange="yukle()">
                 <option value="">Tüm Bahçeler</option>
             </select>
             <input type="text" id="arama" placeholder="Hastalık ara..."
@@ -44,13 +46,14 @@
         </div>
     </div>
 
+    <!-- Detay Modal -->
     <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto p-8">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Analiz Detayı</h2>
                 <div class="flex gap-2">
                     <button onclick="raporIndir()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">📄 Rapor İndir</button>
-                    <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                    <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
             </div>
             <div id="modal-icerik"></div>
@@ -61,9 +64,8 @@
         let tumAnalizler = [];
         let aktifAnalizId = null;
 
-        if (!localStorage.getItem('token')) {
-            window.location.href = '/giris';
-        }
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/giris';
 
         function cikisYap() {
             localStorage.removeItem('token');
@@ -71,29 +73,53 @@
             window.location.href = '/giris';
         }
 
+        function tokenliIstek(url, ayarlar = {}) {
+            return fetch(url, {
+                ...ayarlar,
+                headers: {
+                    ...(ayarlar.headers || {}),
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        }
+
         async function yukle() {
             const bahceId = document.getElementById('bahce-filtre').value;
             const url = bahceId ? `/api/analizler?bahce_id=${bahceId}` : '/api/analizler';
-            const res = await fetch(url);
-            tumAnalizler = await res.json();
-            filtrele();
+            try {
+                const res = await tokenliIstek(url);
+                if (res.status === 401) { window.location.href = '/giris'; return; }
+                tumAnalizler = await res.json();
+                filtrele();
+            } catch (e) {
+                document.getElementById('analizler').innerHTML =
+                    '<p class="text-red-400 col-span-3 text-center py-12">Veriler yüklenemedi</p>';
+            }
         }
 
         async function bahceleriYukle() {
-            const res = await fetch('/api/bahceler');
-            const bahceler = await res.json();
-            const select = document.getElementById('bahce-filtre');
-            bahceler.forEach(b => {
-                select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
-            });
+            try {
+                const res = await tokenliIstek('/api/bahceler');
+                const bahceler = await res.json();
+                const select = document.getElementById('bahce-filtre');
+                bahceler.forEach(b => {
+                    select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
+                });
+            } catch (e) {}
         }
 
         function filtrele() {
             const arama = document.getElementById('arama').value.toLowerCase();
             const filtrelenmis = tumAnalizler.filter(a =>
-                a.hastalik_adi.toLowerCase().includes(arama)
+                (a.hastalik_adi || '').toLowerCase().includes(arama)
             );
             goster(filtrelenmis);
+        }
+
+        function riskBilgisi(risk) {
+            if (risk <= 3) return { renk: 'bg-green-500', metin: 'Düşük Risk', badge: 'bg-green-100 text-green-700' };
+            if (risk <= 6) return { renk: 'bg-yellow-500', metin: 'Orta Risk', badge: 'bg-yellow-100 text-yellow-700' };
+            return { renk: 'bg-red-500', metin: 'Yüksek Risk', badge: 'bg-red-100 text-red-700' };
         }
 
         function goster(analizler) {
@@ -102,37 +128,93 @@
                 div.innerHTML = '<p class="text-gray-400 col-span-3 text-center py-12">Analiz bulunamadı</p>';
                 return;
             }
-            div.innerHTML = analizler.map(a => `
+            div.innerHTML = analizler.map(a => {
+                const risk = a.risk_skoru || 0;
+                const rb = riskBilgisi(risk);
+                const saglikli = a.hastalik_adi === 'Sağlıklı';
+                return `
                 <div class="bg-white rounded-2xl shadow overflow-hidden hover:shadow-md transition">
-                    <img src="/${a.fotograf_yolu}" class="w-full h-48 object-cover cursor-pointer" onclick="detayGoster(${a.id})">
-                    <div class="p-4">
-                        <span class="px-2 py-1 rounded-full text-xs font-medium ${a.hastalik_adi === 'Sağlıklı' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                            ${a.hastalik_adi}
-                        </span>
-                        <p class="text-gray-500 text-sm mt-2">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
-                        <div class="flex gap-2 mt-3">
-                            <button onclick="detayGoster(${a.id})" class="flex-1 bg-blue-100 text-blue-700 py-1 rounded-lg text-sm hover:bg-blue-200">Detay</button>
-                            <button onclick="analizSil(${a.id})" class="flex-1 bg-red-100 text-red-700 py-1 rounded-lg text-sm hover:bg-red-200">Sil</button>
+                    <div class="relative">
+                        <img src="/${a.fotograf_yolu}" class="w-full h-48 object-cover cursor-pointer" onclick="detayGoster(${a.id})"
+                            onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f3f4f6%22 width=%22100%22 height=%22100%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22>📷</text></svg>'">
+                        <!-- Risk rozeti fotoğraf üzerinde -->
+                        <div class="absolute top-2 right-2 ${rb.badge} px-2 py-1 rounded-full text-xs font-semibold">
+                            ${risk}/10
                         </div>
                     </div>
-                </div>
-            `).join('');
+                    <div class="p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${saglikli ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                ${a.hastalik_adi || 'Bilinmiyor'}
+                            </span>
+                        </div>
+                        <!-- Risk çubuğu -->
+                        <div class="mb-3">
+                            <div class="flex justify-between text-xs text-gray-400 mb-1">
+                                <span>${rb.metin}</span>
+                                <span>${risk}/10</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="${rb.renk} h-2 rounded-full" style="width: ${risk * 10}%"></div>
+                            </div>
+                        </div>
+                        ${a.tahmin ? `<p class="text-xs text-gray-500 mb-2 truncate">🔮 ${a.tahmin}</p>` : ''}
+                        <p class="text-gray-400 text-xs mb-3">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
+                        <div class="flex gap-2">
+                            <button onclick="detayGoster(${a.id})" class="flex-1 bg-blue-100 text-blue-700 py-1.5 rounded-lg text-sm hover:bg-blue-200 transition">Detay</button>
+                            <button onclick="analizSil(${a.id})" class="flex-1 bg-red-100 text-red-700 py-1.5 rounded-lg text-sm hover:bg-red-200 transition">Sil</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         function detayGoster(id) {
             aktifAnalizId = id;
-            const analiz = tumAnalizler.find(a => a.id === id);
-            if (!analiz) return;
+            const a = tumAnalizler.find(a => a.id === id);
+            if (!a) return;
+
+            const risk = a.risk_skoru || 0;
+            const rb = riskBilgisi(risk);
+            const saglikli = a.hastalik_adi === 'Sağlıklı';
+            const yoloEtiket = a.tahmin
+                ? a.tahmin.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                : '';
+
             document.getElementById('modal-icerik').innerHTML = `
-                <img src="/${analiz.fotograf_yolu}" class="w-full rounded-xl mb-4 max-h-64 object-cover">
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="px-3 py-1 rounded-full text-sm font-medium ${analiz.hastalik_adi === 'Sağlıklı' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                        ${analiz.hastalik_adi}
-                    </span>
-                    <span class="text-gray-400 text-sm">${new Date(analiz.tarih).toLocaleDateString('tr-TR')}</span>
+                <img src="/${a.fotograf_yolu}" class="w-full rounded-xl mb-4 max-h-64 object-cover"
+                    onerror="this.style.display='none'">
+
+                <!-- Teşhis ve Risk -->
+                <div class="flex items-center justify-between mb-4 p-3 rounded-xl ${saglikli ? 'bg-green-50' : risk > 6 ? 'bg-red-50' : 'bg-yellow-50'}">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-1 rounded-full text-sm font-medium ${saglikli ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                ${a.hastalik_adi || 'Bilinmiyor'}
+                            </span>
+                        </div>
+                        ${yoloEtiket ? `<p class="text-xs text-gray-400">Model: ${yoloEtiket}</p>` : ''}
+                        <p class="text-gray-400 text-xs mt-1">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-bold ${risk <= 3 ? 'text-green-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600'}">${risk}/10</div>
+                        <div class="w-20 bg-gray-200 rounded-full h-2 mt-1">
+                            <div class="${rb.renk} h-2 rounded-full" style="width: ${risk * 10}%"></div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">${rb.metin}</div>
+                    </div>
                 </div>
+
+                <!-- 2 Haftalık Tahmin -->
+                ${a.tahmin ? `
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+                    <p class="text-xs font-semibold text-yellow-700 mb-1">🔮 2 Haftalık Tahmin</p>
+                    <p class="text-yellow-800 text-sm">${a.tahmin}</p>
+                </div>` : ''}
+
+                <!-- Tam Rapor -->
                 <div id="rapor-icerik" class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
-                    ${analiz.ai_raporu}
+                    ${a.ai_raporu || 'Rapor bulunamadı'}
                 </div>
             `;
             document.getElementById('modal').classList.remove('hidden');
@@ -140,31 +222,42 @@
 
         async function analizSil(id) {
             if (!confirm('Bu analizi silmek istediğinize emin misiniz?')) return;
-            await fetch(`/api/analizler/${id}`, { method: 'DELETE' });
+            await tokenliIstek(`/api/analizler/${id}`, { method: 'DELETE' });
             yukle();
         }
 
         function raporIndir() {
-            const analiz = tumAnalizler.find(a => a.id === aktifAnalizId);
-            if (!analiz) return;
+            const a = tumAnalizler.find(a => a.id === aktifAnalizId);
+            if (!a) return;
+            const risk = a.risk_skoru || 0;
+            const rb = riskBilgisi(risk);
             const icerik = `TARIM AI - ANALİZ RAPORU
 ========================
-Tarih: ${new Date(analiz.tarih).toLocaleDateString('tr-TR')}
-Hastalık: ${analiz.hastalik_adi}
+Tarih: ${new Date(a.tarih).toLocaleDateString('tr-TR')}
+Hastalık / Teşhis: ${a.hastalik_adi}
+Risk Skoru: ${risk}/10 — ${rb.metin}
+Model Tespiti: ${a.tahmin || '—'}
 
-${analiz.ai_raporu}`;
+DETAYLI RAPOR:
+${a.ai_raporu || '—'}`;
+
             const blob = new Blob([icerik], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tarim-ai-rapor-${analiz.id}.txt`;
-            a.click();
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `tarim-ai-rapor-${a.id}.txt`;
+            link.click();
             URL.revokeObjectURL(url);
         }
 
         function modalKapat() {
             document.getElementById('modal').classList.add('hidden');
         }
+
+        // Modal dışına tıklayınca kapat
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) modalKapat();
+        });
 
         bahceleriYukle();
         yukle();
