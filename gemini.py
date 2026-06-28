@@ -84,7 +84,7 @@ UYGULAMA_SIKLIĞI: (örn: 10 gün arayla 2 kez)
         parts.append({"text": prompt})
 
         response = client.models.generate_content(
-    model="gemini-2.5-flash-lite-preview-06-17",  # bunu dene
+    model="gemini-1.5-flash",  # bunu dene
     contents=[{"parts": parts}]
 )
 
