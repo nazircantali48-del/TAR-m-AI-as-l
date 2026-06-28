@@ -5,65 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tarım AI - Kayıt</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 60%, #a7f3d0 100%); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md fade-in">
         <div class="text-center mb-8">
-            <span class="text-5xl">🌿</span>
-            <h1 class="text-2xl font-bold text-gray-800 mt-2">Tarım AI</h1>
-            <p class="text-gray-500 mt-1">Yeni hesap oluştur</p>
+            <div class="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg shadow-emerald-200">🌿</div>
+            <h1 class="text-2xl font-extrabold text-gray-800">Tarım AI</h1>
+            <p class="text-gray-500 mt-1 text-sm">Yeni hesap oluştur</p>
         </div>
 
-        <div id="hata" class="hidden bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm"></div>
+        <div id="hata" class="hidden bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 mb-4 text-sm"></div>
 
         <div class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label>
                 <input type="text" id="ad" placeholder="Adınız Soyadınız"
-                    class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" id="email" placeholder="ornek@email.com"
-                    class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Şifre</label>
                 <input type="password" id="sifre" placeholder="En az 6 karakter"
-                    class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50">
             </div>
-            <button onclick="kayitOl()"
-                id="kayit-btn"
-                class="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition">
+            <button onclick="kayitOl()" id="kayit-btn"
+                class="w-full bg-gradient-to-r from-emerald-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:from-emerald-700 hover:to-green-600 transition shadow-lg shadow-emerald-100">
                 Kayıt Ol
             </button>
         </div>
 
         <p class="text-center text-gray-500 text-sm mt-6">
-            Zaten hesabın var mı? <a href="/giris" class="text-green-600 font-medium hover:underline">Giriş yap</a>
+            Zaten hesabın var mı? <a href="/giris" class="text-emerald-600 font-semibold hover:underline">Giriş yap</a>
         </p>
     </div>
 
     <script>
-        if (localStorage.getItem('token')) {
-            window.location.href = '/';
-        }
+        if (localStorage.getItem('token')) window.location.href = '/';
 
         async function kayitOl() {
             const ad = document.getElementById('ad').value;
             const email = document.getElementById('email').value;
             const sifre = document.getElementById('sifre').value;
-
-            if (!ad || !email || !sifre) {
-                hataGoster('Tüm alanları doldurun!');
-                return;
-            }
-            if (sifre.length < 6) {
-                hataGoster('Şifre en az 6 karakter olmalı!');
-                return;
-            }
+            if (!ad || !email || !sifre) { hataGoster('Tüm alanları doldurun!'); return; }
+            if (sifre.length < 6) { hataGoster('Şifre en az 6 karakter olmalı!'); return; }
 
             const btn = document.getElementById('kayit-btn');
             btn.disabled = true;
@@ -77,16 +71,10 @@
             try {
                 const res = await fetch('/api/kayit', { method: 'POST', body: form });
                 const veri = await res.json();
-
-                if (!res.ok) {
-                    hataGoster(veri.detail || 'Hata oluştu');
-                    return;
-                }
-
+                if (!res.ok) { hataGoster(veri.detail || 'Hata oluştu'); return; }
                 localStorage.setItem('token', veri.token);
                 localStorage.setItem('kullanici_ad', veri.kullanici_ad);
                 window.location.href = '/';
-
             } catch (e) {
                 hataGoster('Bağlantı hatası');
             } finally {

@@ -5,37 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tarım AI - Analiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0fdf4; }
+        .gradient-header { background: linear-gradient(135deg, #065f46 0%, #059669 50%, #10b981 100%); }
+        .nav-link { padding: 6px 14px; border-radius: 8px; transition: background 0.15s; font-size: 14px; font-weight: 500; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.35s ease forwards; }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body>
 
-    <nav class="bg-green-700 text-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <nav class="gradient-header text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <span class="text-2xl">🌿</span>
-                <span class="text-xl font-bold">Tarım AI</span>
+                <div class="w-9 h-9 bg-white bg-opacity-20 rounded-xl flex items-center justify-center text-lg">🌿</div>
+                <span class="text-lg font-bold tracking-tight">Tarım AI</span>
             </div>
-            <div class="flex items-center gap-6">
-                <a href="/" class="hover:text-green-200">Dashboard</a>
-                <a href="/analiz" class="font-semibold border-b-2 border-white pb-1">Analiz</a>
-                <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
-                <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
-                <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
-                <button onclick="cikisYap()" class="bg-green-800 px-3 py-1 rounded-lg text-sm hover:bg-green-900">Çıkış</button>
+            <div class="flex items-center gap-1">
+                <a href="/" class="nav-link text-white">Dashboard</a>
+                <a href="/analiz" class="nav-link active text-white">Analiz</a>
+                <a href="/bahceler" class="nav-link text-white">Bahçeler</a>
+                <a href="/gecmis" class="nav-link text-white">Geçmiş</a>
+                <a href="/ilaclar" class="nav-link text-white">İlaçlama</a>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="kullanici-ad" class="text-sm text-green-100 font-medium"></span>
+                <button onclick="cikisYap()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg text-sm font-medium transition">Çıkış</button>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-4xl mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Hastalık Analizi</h1>
-        <p class="text-gray-500 mb-8">Fotoğraf yükle, yapay zeka analiz etsin</p>
+    <div class="bg-gradient-to-r from-emerald-50 to-green-100 px-6 py-8 border-b border-emerald-100">
+        <div class="max-w-4xl mx-auto">
+            <p class="text-emerald-600 font-semibold text-sm mb-1">🔍 Yapay Zeka Analizi</p>
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-1">Hastalık Analizi</h1>
+            <p class="text-gray-500">Fotoğraf yükle, yapay zeka analiz etsin</p>
+        </div>
+    </div>
 
-        <div class="bg-white rounded-2xl shadow p-8">
+    <div class="max-w-4xl mx-auto px-6 py-8">
 
+        <div class="bg-white rounded-2xl shadow-sm p-8 fade-in">
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Bahçe Seç</label>
-                <select id="bahce-sec" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select id="bahce-sec" class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50">
                     <option value="">Bahçe seçin...</option>
                 </select>
             </div>
@@ -43,33 +59,34 @@
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Fotoğraf</label>
                 <div id="yukle-alan"
-                    class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center cursor-pointer hover:border-green-500 transition"
+                    class="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition"
                     onclick="document.getElementById('fotograf-input').click()">
                     <div class="text-5xl mb-3">📷</div>
-                    <p class="text-gray-500">Fotoğraf seçmek için tıkla</p>
+                    <p class="text-gray-500 font-medium">Fotoğraf seçmek için tıkla</p>
                     <p class="text-gray-400 text-sm mt-1">JPG, PNG desteklenir</p>
                 </div>
                 <input type="file" id="fotograf-input" accept="image/*" class="hidden" onchange="fotografSec(event)">
-                <img id="onizleme" class="hidden mt-4 rounded-xl max-h-64 mx-auto">
+                <img id="onizleme" class="hidden mt-4 rounded-xl max-h-64 mx-auto shadow">
             </div>
 
             <button onclick="analizYap()"
                 id="analiz-btn"
-                class="w-full bg-green-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-green-700 transition">
+                class="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-emerald-700 transition shadow-lg shadow-emerald-100">
                 🔍 Analiz Et
             </button>
         </div>
 
-        <div id="sonuc" class="hidden mt-8 bg-white rounded-2xl shadow p-8">
+        <div id="sonuc" class="hidden mt-6 bg-white rounded-2xl shadow-sm p-8 fade-in">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Analiz Sonucu</h2>
             <div id="sonuc-icerik"></div>
         </div>
     </div>
 
     <script>
-        // Giriş kontrolü
         const token = localStorage.getItem('token');
+        const kullaniciAd = localStorage.getItem('kullanici_ad');
         if (!token) window.location.href = '/giris';
+        if (kullaniciAd) document.getElementById('kullanici-ad').textContent = `👤 ${kullaniciAd}`;
 
         function cikisYap() {
             localStorage.removeItem('token');
@@ -77,14 +94,10 @@
             window.location.href = '/giris';
         }
 
-        // Token ile istek yapan yardımcı fonksiyon
         function tokenliIstek(url, ayarlar = {}) {
             return fetch(url, {
                 ...ayarlar,
-                headers: {
-                    ...(ayarlar.headers || {}),
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { ...(ayarlar.headers || {}), 'Authorization': `Bearer ${token}` }
             });
         }
 
@@ -98,12 +111,8 @@
                     select.innerHTML = '<option value="">Önce bahçe ekleyin</option>';
                     return;
                 }
-                bahceler.forEach(b => {
-                    select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
-                });
-            } catch (e) {
-                console.error('Bahçeler yüklenemedi:', e);
-            }
+                bahceler.forEach(b => { select.innerHTML += `<option value="${b.id}">${b.ad}</option>`; });
+            } catch (e) { console.error(e); }
         }
 
         function fotografSec(event) {
@@ -122,7 +131,6 @@
         async function analizYap() {
             const bahceId = document.getElementById('bahce-sec').value;
             const fotograf = document.getElementById('fotograf-input').files[0];
-
             if (!bahceId) { alert('Lütfen bahçe seçin!'); return; }
             if (!fotograf) { alert('Lütfen fotoğraf seçin!'); return; }
 
@@ -137,11 +145,7 @@
             try {
                 const res = await tokenliIstek('/api/analiz', { method: 'POST', body: form });
                 const veri = await res.json();
-
-                if (!res.ok) {
-                    alert('Hata: ' + (veri.detail || 'Analiz başarısız'));
-                    return;
-                }
+                if (!res.ok) { alert('Hata: ' + (veri.detail || 'Analiz başarısız')); return; }
 
                 const sonucDiv = document.getElementById('sonuc');
                 const icerik = document.getElementById('sonuc-icerik');
@@ -150,22 +154,17 @@
 
                 const saglikli = veri.hastalik_adi === 'Sağlıklı';
                 const risk = veri.risk_skoru || 0;
-                const riskRenk = risk <= 3 ? 'bg-green-500' : risk <= 6 ? 'bg-yellow-500' : 'bg-red-500';
+                const riskRenk = risk <= 3 ? 'bg-emerald-500' : risk <= 6 ? 'bg-yellow-500' : 'bg-red-500';
                 const riskYazi = risk <= 3 ? 'Düşük Risk' : risk <= 6 ? 'Orta Risk' : 'Yüksek Risk — Acil Müdahale!';
-                const riskMetinRenk = risk <= 3 ? 'text-green-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600';
-
-                // YOLOv8 tahmin etiketi temizleme
-                const yoloEtiket = veri.tahmin
-                    ? veri.tahmin.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                    : '';
+                const riskMetinRenk = risk <= 3 ? 'text-emerald-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600';
+                const yoloEtiket = veri.tahmin ? veri.tahmin.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
 
                 icerik.innerHTML = `
-                    <!-- Risk Skoru Başlık -->
-                    <div class="flex items-center justify-between mb-6 p-4 rounded-xl ${saglikli ? 'bg-green-50' : risk > 6 ? 'bg-red-50' : 'bg-yellow-50'}">
+                    <div class="flex items-center justify-between mb-6 p-4 rounded-2xl ${saglikli ? 'bg-emerald-50' : risk > 6 ? 'bg-red-50' : 'bg-yellow-50'}">
                         <div class="flex items-center gap-3">
                             <span class="text-3xl">${saglikli ? '✅' : risk > 6 ? '🚨' : '⚠️'}</span>
                             <div>
-                                <p class="font-bold text-xl ${saglikli ? 'text-green-600' : 'text-red-600'}">${veri.hastalik_adi}</p>
+                                <p class="font-bold text-xl ${saglikli ? 'text-emerald-600' : 'text-red-600'}">${veri.hastalik_adi}</p>
                                 ${yoloEtiket ? `<p class="text-xs text-gray-400 mt-0.5">Model tespiti: ${yoloEtiket}</p>` : ''}
                             </div>
                         </div>
@@ -173,7 +172,7 @@
                             <div class="text-sm text-gray-500 mb-1">Risk Skoru</div>
                             <div class="flex items-center gap-2">
                                 <div class="w-24 bg-gray-200 rounded-full h-3">
-                                    <div class="${riskRenk} h-3 rounded-full transition-all" style="width: ${risk * 10}%"></div>
+                                    <div class="${riskRenk} h-3 rounded-full" style="width: ${risk * 10}%"></div>
                                 </div>
                                 <span class="font-bold text-lg">${risk}/10</span>
                             </div>
@@ -181,7 +180,6 @@
                         </div>
                     </div>
 
-                    <!-- Değişim (önceki analize göre) -->
                     ${veri.degisim && veri.degisim !== 'İlk analiz' ? `
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                         <p class="font-semibold text-blue-800 mb-1">📊 Önceki analize göre değişim:</p>
@@ -191,14 +189,12 @@
                         <p class="text-gray-500 text-sm">📋 İlk analiz — karşılaştırma için geçmiş kayıt yok</p>
                     </div>`}
 
-                    <!-- 2 Haftalık Tahmin -->
                     ${veri.tahmin ? `
                     <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
                         <p class="font-semibold text-yellow-800 mb-1">🔮 2 hafta sonra tahmin:</p>
                         <p class="text-yellow-700 text-sm">${veri.tahmin}</p>
                     </div>` : ''}
 
-                    <!-- Önerilen İlaç Kutusu -->
                     ${!saglikli && veri.onerilen_ilac ? `
                     <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4 grid grid-cols-3 gap-3">
                         <div>
@@ -215,37 +211,33 @@
                         </div>
                     </div>` : ''}
 
-                    <!-- Tam Rapor -->
-                    <div class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed mb-4">
-                        ${veri.rapor}
-                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed mb-4">${veri.rapor}</div>
 
-                    <!-- Tedavi Kayıt Formu -->
                     ${!saglikli ? `
-                    <div class="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
+                    <div class="bg-orange-50 border border-orange-200 rounded-2xl p-6 mt-4">
                         <h3 class="font-semibold text-orange-800 mb-4">💊 Tedavi Kaydı Oluştur</h3>
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">İlaç Adı</label>
                                 <input type="text" id="tedavi-ilac" value="${veri.onerilen_ilac || veri.hastalik_adi + ' tedavisi'}"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                    class="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Doz</label>
                                 <input type="text" id="tedavi-doz" value="${veri.onerilen_doz || ''}" placeholder="Örn: 2g/L"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
-                                ${veri.uygulama_sikligi ? `<p class="text-sm text-orange-600 mt-1">⏰ Önerilen uygulama sıklığı: <strong>${veri.uygulama_sikligi}</strong></p>` : ''}
+                                    class="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                ${veri.uygulama_sikligi ? `<p class="text-sm text-orange-600 mt-1">⏰ Önerilen: <strong>${veri.uygulama_sikligi}</strong></p>` : ''}
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Uygulama Tarihi</label>
                                     <input type="date" id="tedavi-tarih" value="${new Date().toISOString().split('T')[0]}"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                        class="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Sonraki Uygulama</label>
                                     <input type="date" id="tedavi-sonraki"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                        class="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
                                 </div>
                             </div>
                             <button onclick="tedaviKaydet(${bahceId}, ${veri.analiz_id})"
@@ -253,9 +245,8 @@
                                 💊 Tedaviyi Kaydet ve İlaçlamaya Ekle
                             </button>
                         </div>
-                    </div>` : '<p class="text-green-600 font-medium text-center mt-4">✅ Bitkiniz sağlıklı görünüyor!</p>'}
+                    </div>` : '<p class="text-emerald-600 font-medium text-center mt-4">✅ Bitkiniz sağlıklı görünüyor!</p>'}
                 `;
-
             } catch (e) {
                 alert('Bağlantı hatası: ' + e.message);
             } finally {
@@ -269,9 +260,7 @@
             const doz = document.getElementById('tedavi-doz').value;
             const tarih = document.getElementById('tedavi-tarih').value;
             const sonraki = document.getElementById('tedavi-sonraki').value;
-
             if (!tarih) { alert('Uygulama tarihi seçin!'); return; }
-
             const form = new FormData();
             form.append('bahce_id', bahceId);
             form.append('analiz_id', analizId);
@@ -280,15 +269,9 @@
             form.append('uygulama_tarihi', tarih);
             if (sonraki) form.append('sonraki_tarih', sonraki);
             form.append('notlar', 'AI analizi sonucu oluşturuldu');
-
             const res = await tokenliIstek('/api/ilaclamalar', { method: 'POST', body: form });
-
-            if (res.ok) {
-                alert('✅ Tedavi ilaçlama takibine eklendi!');
-                window.location.href = '/ilaclar';
-            } else {
-                alert('Kayıt hatası oluştu!');
-            }
+            if (res.ok) { alert('✅ Tedavi ilaçlama takibine eklendi!'); window.location.href = '/ilaclar'; }
+            else { alert('Kayıt hatası oluştu!'); }
         }
 
         bahceleriYukle();

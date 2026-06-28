@@ -5,43 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tarım AI - Geçmiş</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0fdf4; }
+        .gradient-header { background: linear-gradient(135deg, #065f46 0%, #059669 50%, #10b981 100%); }
+        .nav-link { padding: 6px 14px; border-radius: 8px; transition: background 0.15s; font-size: 14px; font-weight: 500; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.35s ease forwards; }
+    </style>
 </head>
-<body class="bg-gray-50">
-    <nav class="bg-green-700 text-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+<body>
+
+    <nav class="gradient-header text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <span class="text-2xl">🌿</span>
-                <span class="text-xl font-bold">Tarım AI</span>
+                <div class="w-9 h-9 bg-white bg-opacity-20 rounded-xl flex items-center justify-center text-lg">🌿</div>
+                <span class="text-lg font-bold tracking-tight">Tarım AI</span>
             </div>
-            <div class="flex items-center gap-6">
-                <a href="/" class="hover:text-green-200">Dashboard</a>
-                <a href="/analiz" class="hover:text-green-200">Analiz</a>
-                <a href="/bahceler" class="hover:text-green-200">Bahçeler</a>
-                <a href="/gecmis" class="font-semibold border-b-2 border-white pb-1">Geçmiş</a>
-                <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
-                <button onclick="cikisYap()" class="bg-green-800 px-3 py-1 rounded-lg text-sm hover:bg-green-900">Çıkış</button>
+            <div class="flex items-center gap-1">
+                <a href="/" class="nav-link text-white">Dashboard</a>
+                <a href="/analiz" class="nav-link text-white">Analiz</a>
+                <a href="/bahceler" class="nav-link text-white">Bahçeler</a>
+                <a href="/gecmis" class="nav-link active text-white">Geçmiş</a>
+                <a href="/ilaclar" class="nav-link text-white">İlaçlama</a>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="kullanici-ad" class="text-sm text-green-100 font-medium"></span>
+                <button onclick="cikisYap()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg text-sm font-medium transition">Çıkış</button>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Geçmiş Analizler</h1>
-        <p class="text-gray-500 mb-6">Tüm analiz kayıtları</p>
+    <div class="bg-gradient-to-r from-emerald-50 to-green-100 px-6 py-8 border-b border-emerald-100">
+        <div class="max-w-7xl mx-auto">
+            <p class="text-emerald-600 font-semibold text-sm mb-1">📋 Analiz Geçmişi</p>
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-1">Geçmiş Analizler</h1>
+            <p class="text-gray-500">Tüm analiz kayıtları</p>
+        </div>
+    </div>
 
-        <div class="bg-white rounded-2xl shadow p-4 mb-6 flex gap-4">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 flex gap-4">
             <select id="bahce-filtre"
-                class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                class="border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
                 onchange="yukle()">
                 <option value="">Tüm Bahçeler</option>
             </select>
             <input type="text" id="arama" placeholder="Hastalık ara..."
-                class="border border-gray-300 rounded-lg px-4 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-green-500"
+                class="border border-gray-300 rounded-xl px-4 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
                 oninput="filtrele()">
         </div>
 
-        <div id="analizler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="analizler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in">
             <p class="text-gray-400 col-span-3 text-center py-12">Yükleniyor...</p>
         </div>
     </div>
@@ -52,7 +69,7 @@
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Analiz Detayı</h2>
                 <div class="flex gap-2">
-                    <button onclick="raporIndir()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">📄 Rapor İndir</button>
+                    <button onclick="raporIndir()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm hover:bg-emerald-700 font-medium transition">📄 Rapor İndir</button>
                     <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
             </div>
@@ -65,7 +82,9 @@
         let aktifAnalizId = null;
 
         const token = localStorage.getItem('token');
+        const kullaniciAd = localStorage.getItem('kullanici_ad');
         if (!token) window.location.href = '/giris';
+        if (kullaniciAd) document.getElementById('kullanici-ad').textContent = `👤 ${kullaniciAd}`;
 
         function cikisYap() {
             localStorage.removeItem('token');
@@ -76,10 +95,7 @@
         function tokenliIstek(url, ayarlar = {}) {
             return fetch(url, {
                 ...ayarlar,
-                headers: {
-                    ...(ayarlar.headers || {}),
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { ...(ayarlar.headers || {}), 'Authorization': `Bearer ${token}` }
             });
         }
 
@@ -102,22 +118,18 @@
                 const res = await tokenliIstek('/api/bahceler');
                 const bahceler = await res.json();
                 const select = document.getElementById('bahce-filtre');
-                bahceler.forEach(b => {
-                    select.innerHTML += `<option value="${b.id}">${b.ad}</option>`;
-                });
+                bahceler.forEach(b => { select.innerHTML += `<option value="${b.id}">${b.ad}</option>`; });
             } catch (e) {}
         }
 
         function filtrele() {
             const arama = document.getElementById('arama').value.toLowerCase();
-            const filtrelenmis = tumAnalizler.filter(a =>
-                (a.hastalik_adi || '').toLowerCase().includes(arama)
-            );
+            const filtrelenmis = tumAnalizler.filter(a => (a.hastalik_adi || '').toLowerCase().includes(arama));
             goster(filtrelenmis);
         }
 
         function riskBilgisi(risk) {
-            if (risk <= 3) return { renk: 'bg-green-500', metin: 'Düşük Risk', badge: 'bg-green-100 text-green-700' };
+            if (risk <= 3) return { renk: 'bg-emerald-500', metin: 'Düşük Risk', badge: 'bg-emerald-100 text-emerald-700' };
             if (risk <= 6) return { renk: 'bg-yellow-500', metin: 'Orta Risk', badge: 'bg-yellow-100 text-yellow-700' };
             return { renk: 'bg-red-500', metin: 'Yüksek Risk', badge: 'bg-red-100 text-red-700' };
         }
@@ -133,22 +145,20 @@
                 const rb = riskBilgisi(risk);
                 const saglikli = a.hastalik_adi === 'Sağlıklı';
                 return `
-                <div class="bg-white rounded-2xl shadow overflow-hidden hover:shadow-md transition">
+                <div class="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition border border-gray-100">
                     <div class="relative">
                         <img src="/${a.fotograf_yolu}" class="w-full h-48 object-cover cursor-pointer" onclick="detayGoster(${a.id})"
                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f3f4f6%22 width=%22100%22 height=%22100%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22>📷</text></svg>'">
-                        <!-- Risk rozeti fotoğraf üzerinde -->
                         <div class="absolute top-2 right-2 ${rb.badge} px-2 py-1 rounded-full text-xs font-semibold">
                             ${risk}/10
                         </div>
                     </div>
                     <div class="p-4">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium ${saglikli ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${saglikli ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
                                 ${a.hastalik_adi || 'Bilinmiyor'}
                             </span>
                         </div>
-                        <!-- Risk çubuğu -->
                         <div class="mb-3">
                             <div class="flex justify-between text-xs text-gray-400 mb-1">
                                 <span>${rb.metin}</span>
@@ -161,8 +171,8 @@
                         ${a.tahmin ? `<p class="text-xs text-gray-500 mb-2 truncate">🔮 ${a.tahmin}</p>` : ''}
                         <p class="text-gray-400 text-xs mb-3">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
                         <div class="flex gap-2">
-                            <button onclick="detayGoster(${a.id})" class="flex-1 bg-blue-100 text-blue-700 py-1.5 rounded-lg text-sm hover:bg-blue-200 transition">Detay</button>
-                            <button onclick="analizSil(${a.id})" class="flex-1 bg-red-100 text-red-700 py-1.5 rounded-lg text-sm hover:bg-red-200 transition">Sil</button>
+                            <button onclick="detayGoster(${a.id})" class="flex-1 bg-blue-100 text-blue-700 py-1.5 rounded-xl text-sm hover:bg-blue-200 transition font-medium">Detay</button>
+                            <button onclick="analizSil(${a.id})" class="flex-1 bg-red-100 text-red-700 py-1.5 rounded-xl text-sm hover:bg-red-200 transition font-medium">Sil</button>
                         </div>
                     </div>
                 </div>`;
@@ -173,23 +183,17 @@
             aktifAnalizId = id;
             const a = tumAnalizler.find(a => a.id === id);
             if (!a) return;
-
             const risk = a.risk_skoru || 0;
             const rb = riskBilgisi(risk);
             const saglikli = a.hastalik_adi === 'Sağlıklı';
-            const yoloEtiket = a.tahmin
-                ? a.tahmin.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                : '';
+            const yoloEtiket = a.tahmin ? a.tahmin.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
 
             document.getElementById('modal-icerik').innerHTML = `
-                <img src="/${a.fotograf_yolu}" class="w-full rounded-xl mb-4 max-h-64 object-cover"
-                    onerror="this.style.display='none'">
-
-                <!-- Teşhis ve Risk -->
-                <div class="flex items-center justify-between mb-4 p-3 rounded-xl ${saglikli ? 'bg-green-50' : risk > 6 ? 'bg-red-50' : 'bg-yellow-50'}">
+                <img src="/${a.fotograf_yolu}" class="w-full rounded-xl mb-4 max-h-64 object-cover" onerror="this.style.display='none'">
+                <div class="flex items-center justify-between mb-4 p-3 rounded-xl ${saglikli ? 'bg-emerald-50' : risk > 6 ? 'bg-red-50' : 'bg-yellow-50'}">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="px-2 py-1 rounded-full text-sm font-medium ${saglikli ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            <span class="px-2 py-1 rounded-full text-sm font-semibold ${saglikli ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
                                 ${a.hastalik_adi || 'Bilinmiyor'}
                             </span>
                         </div>
@@ -197,22 +201,18 @@
                         <p class="text-gray-400 text-xs mt-1">${new Date(a.tarih).toLocaleDateString('tr-TR')}</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-sm font-bold ${risk <= 3 ? 'text-green-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600'}">${risk}/10</div>
+                        <div class="text-sm font-bold ${risk <= 3 ? 'text-emerald-600' : risk <= 6 ? 'text-yellow-600' : 'text-red-600'}">${risk}/10</div>
                         <div class="w-20 bg-gray-200 rounded-full h-2 mt-1">
                             <div class="${rb.renk} h-2 rounded-full" style="width: ${risk * 10}%"></div>
                         </div>
                         <div class="text-xs text-gray-500 mt-1">${rb.metin}</div>
                     </div>
                 </div>
-
-                <!-- 2 Haftalık Tahmin -->
                 ${a.tahmin ? `
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
                     <p class="text-xs font-semibold text-yellow-700 mb-1">🔮 2 Haftalık Tahmin</p>
                     <p class="text-yellow-800 text-sm">${a.tahmin}</p>
                 </div>` : ''}
-
-                <!-- Tam Rapor -->
                 <div id="rapor-icerik" class="bg-gray-50 rounded-xl p-4 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
                     ${a.ai_raporu || 'Rapor bulunamadı'}
                 </div>
@@ -231,16 +231,7 @@
             if (!a) return;
             const risk = a.risk_skoru || 0;
             const rb = riskBilgisi(risk);
-            const icerik = `TARIM AI - ANALİZ RAPORU
-========================
-Tarih: ${new Date(a.tarih).toLocaleDateString('tr-TR')}
-Hastalık / Teşhis: ${a.hastalik_adi}
-Risk Skoru: ${risk}/10 — ${rb.metin}
-Model Tespiti: ${a.tahmin || '—'}
-
-DETAYLI RAPOR:
-${a.ai_raporu || '—'}`;
-
+            const icerik = `TARIM AI - ANALİZ RAPORU\n========================\nTarih: ${new Date(a.tarih).toLocaleDateString('tr-TR')}\nHastalık / Teşhis: ${a.hastalik_adi}\nRisk Skoru: ${risk}/10 — ${rb.metin}\nModel Tespiti: ${a.tahmin || '—'}\n\nDETAYLI RAPOR:\n${a.ai_raporu || '—'}`;
             const blob = new Blob([icerik], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -250,14 +241,8 @@ ${a.ai_raporu || '—'}`;
             URL.revokeObjectURL(url);
         }
 
-        function modalKapat() {
-            document.getElementById('modal').classList.add('hidden');
-        }
-
-        // Modal dışına tıklayınca kapat
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) modalKapat();
-        });
+        function modalKapat() { document.getElementById('modal').classList.add('hidden'); }
+        document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) modalKapat(); });
 
         bahceleriYukle();
         yukle();
