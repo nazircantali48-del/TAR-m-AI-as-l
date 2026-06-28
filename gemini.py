@@ -19,16 +19,15 @@ def mime_tip(yol):
     return {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}.get(uzanti, "image/jpeg")
 
 def analiz_et(
-    fotograf_yolu: str, 
-    onceki_fotograf_yolu: str = None, 
+    fotograf_yolu: str,
+    onceki_fotograf_yolu: str = None,
     onceki_rapor: str = None,
-    yolo_etiket: str = "Bilinmeyen Durum",
     hava_durumu: str = "Bilgi Yok"
 ) -> dict:
     try:
         parts = []
 
-        # 1. MEVCUT FOTOĞRAF (Bugün çekilen)
+        # Mevcut fotoğraf
         parts.append({
             "inline_data": {
                 "mime_type": mime_tip(fotograf_yolu),
@@ -36,7 +35,7 @@ def analiz_et(
             }
         })
 
-        # 2. ÖNCEKİ FOTOĞRAF (Varsa zaman serisi takibi için)
+        # Önceki fotoğraf varsa ekle
         if onceki_fotograf_yolu and os.path.exists(onceki_fotograf_yolu):
             parts.append({
                 "inline_data": {
@@ -51,40 +50,39 @@ Lütfen bu iki fotoğraf arasındaki gelişim/iyileşme/kötüleşme durumunu DE
         else:
             karsilastirma_talimat = "Bu bitkinin/bahçenin ilk analizi yapılıyor, geçmiş kaydı yok."
 
-        # 3. ZİRAAT MÜHENDİSİ PROMPT'U VE SİSTEM TALİMATLARI
-        # YOLOv8 çıktısını ve Hava Durumunu Gemini'a burada hammadde olarak veriyoruz.
-        ziraat_uzmani_prompt = f"""
+        # Gemini prompt
+        prompt = f"""
 Sen Türkiye'nin Akdeniz ve Ege bölgelerindeki narenciye/portakal üretiminde uzmanlaşmış kıdemli bir Ziraat Mühendisliği yapay zekasısın.
 
 [SİSTEM VERİLERİ]
-- Yerel YOLOv8 modelinin fotoğrafta tespit ettiği ana etiket: {yolo_etiket}
-- Bahçenin anlık dinamik hava durumu: {hava_durumu}
+- Bahçenin anlık hava durumu: {hava_durumu}
 {karsilastirma_talimat}
 
-[GÖREVİN VE SINIRLARIN]
-1. Eğer YOLOv8 etiketi besin eksikliği içeriyorsa ('Azot Eksikliği', 'Mg', 'Fe' vb.), çiftçiye Akdeniz kireçli toprak yapısına uygun gübreleme reçetesi yaz.
-2. Eğer YOLOv8 etiketi yabani ot içeriyorsa (örneğin DeepWeeds sınıfları), bunu Türkiye'deki karşılıkları olan Sirken, Semizotu veya Horozibiği gibi istilacılar olarak yorumla ve mekanik/organik temizlik öner.
-3. YOLOv8 çıktısını ve hava durumunu (yüksek nem mantar riskini tetikler vb.) fotoğraftaki görsel kanıtlarla harmanla.
+[GÖREVİN]
+Fotoğraftaki bitkiyi analiz et:
+1. Hastalık, zararlı böcek, besin eksikliği veya yabani ot varsa tespit et
+2. Hava durumunu hastalık riski açısından değerlendir
+3. Akdeniz/Türkiye koşullarına uygun tedavi ve ilaçlama planı yaz
+4. Yabani ot varsa Türkiye'deki karşılıklarıyla (sirken, semizotu, horozibiği vb.) yorumla
 
-Lütfen TAM OLARAK şu formatta yanıtla, markdown kalıpları veya ekstra başlıklar/notlar ekleme:
+Lütfen TAM OLARAK şu formatta yanıtla, başka hiçbir şey ekleme:
 
-HASTALIK: (SADECE tespit edilen durumun kısa ve net adını yaz. Örnek: Demir Eksikliği, Turunçgil Kanseri, Yabani Ot İstilası. Sorun yoksa 'Sağlıklı' yaz)
-AÇIKLAMA: (Durumu özetleyen 2-3 cümlelik net açıklama)
-BELİRTİLER: (Yaprakta veya çevrede gözlemlenen görsel belirtiler)
-NEDEN: (Bu durumun oluşma nedenleri, toprak veya iklim ilişkisi)
-DEĞİŞİM: (Önceki duruma göre iyileşme mi var kötüleşme mi? İlk analizse 'İlk analiz' yaz)
-TAHMİN: (Mevcut hava durumu ve risk senaryosuna göre 2 hafta içinde ne olabilir?)
-RİSK_SKORU: (1-10 arası sayı. 1=Sorunsuz, 10=Acil müdahale şart. SADECE SAYI YAZ)
-TEDAVİ: (Uygulanacak ziraat ve kültürel mücadele yöntemleri)
-ÖNERİLEN_İLAÇ: (En uygun organik/kimyasal ilaç veya gübre adı. Ot ise 'Mekanik Temizlik / Herbisit')
-ÖNERİLEN_DOZ: (Uygulama dozu, örn: 200g / 100L su)
-UYGULAMA_SIKLIĞI: (Uygulama periyodu, örn: 10 gün arayla 2 kez)
-ÇEVRE_ANALİZİ: (Bahçe tabanındaki yabancı ot durumu, sulama veya toprak riskleri)
+HASTALIK: (tespit edilen durumun kısa adı. Örnek: Demir Eksikliği, Turunçgil Kanseri, Yabani Ot İstilası. Sorun yoksa 'Sağlıklı' yaz)
+AÇIKLAMA: (2-3 cümle açıklama)
+BELİRTİLER: (görülen belirtiler)
+NEDEN: (bu durumun nedenleri)
+DEĞİŞİM: (önceki duruma göre değişim. İlk analizse 'İlk analiz' yaz)
+TAHMİN: (mevcut hava ve risk durumuna göre 2 hafta içinde ne olabilir?)
+RİSK_SKORU: (1-10 arası sayı. 1=sorunsuz, 10=acil müdahale. SADECE SAYI yaz)
+TEDAVİ: (uygulanacak tedavi yöntemleri)
+ÖNERİLEN_İLAÇ: (en uygun ilaç veya gübre adı)
+ÖNERİLEN_DOZ: (uygulama dozu, örn: 200g/100L su)
+UYGULAMA_SIKLIĞI: (örn: 10 gün arayla 2 kez)
+ÇEVRE_ANALİZİ: (yabani ot, sulama veya toprak riski varsa yaz, yoksa 'Çevresel risk gözlenmedi' yaz)
 """
 
-        parts.append({"text": ziraat_uzmani_prompt})
+        parts.append({"text": prompt})
 
-        # Gemini modelini çağırıyoruz
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=[{"parts": parts}]
@@ -92,16 +90,15 @@ UYGULAMA_SIKLIĞI: (Uygulama periyodu, örn: 10 gün arayla 2 kez)
 
         rapor = response.text
 
-        # Satır bazlı parser (Rapor çıktısını ayrıştırır)
         def satir_deger(anahtar):
             for satir in rapor.split("\n"):
                 if satir.strip().startswith(anahtar + ":"):
                     return satir.replace(anahtar + ":", "").strip()
             return ""
 
-        hastalik_adi = satir_deger("HASTALIK") or yolo_etiket
+        hastalik_adi = satir_deger("HASTALIK") or "Bilinmiyor"
         if hastalik_adi.startswith("("):
-            hastalik_adi = yolo_etiket
+            hastalik_adi = "Bilinmiyor"
 
         risk_str = satir_deger("RİSK_SKORU")
         try:
