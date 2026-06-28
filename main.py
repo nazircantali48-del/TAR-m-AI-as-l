@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import shutil
 import os
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
@@ -20,14 +20,13 @@ SECRET_KEY = "tarim-ai-gizli-anahtar-2026"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 def sifre_hashle(sifre):
-    return pwd_context.hash(sifre)
+    return bcrypt.hashpw(sifre.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 def sifre_dogrula(sifre, hash):
-    return pwd_context.verify(sifre, hash)
+    return bcrypt.checkpw(sifre.encode("utf-8"), hash.encode("utf-8"))
 
 def token_olustur(data: dict):
     to_encode = data.copy()
@@ -164,7 +163,6 @@ async def analiz_yap(
     with open(dosya_yolu, "wb") as buffer:
         shutil.copyfileobj(fotograf.file, buffer)
 
-    # Bahçe konumundan dinamik koordinat
     bahce = db.query(Bahce).filter(Bahce.id == bahce_id).first()
     lat, lon = 37.0, 35.0
     if bahce and bahce.konum and "," in bahce.konum:
@@ -174,18 +172,15 @@ async def analiz_yap(
         except ValueError:
             pass
 
-    # Hava durumu
     hava = hava_durumu_al(lat, lon)
     hava_ozeti = hava.get("ozet", "") if hava["basarili"] else ""
 
-    # Geçmiş analiz (zaman serisi karşılaştırması)
     onceki = db.query(Analiz).filter(
         Analiz.bahce_id == bahce_id
     ).order_by(Analiz.tarih.desc()).first()
     onceki_fotograf = onceki.fotograf_yolu if onceki else None
     onceki_rapor = onceki.ai_raporu if onceki else None
 
-    # Gemini analizi (tek yapay zeka, her şeyi o yapıyor)
     sonuc = analiz_et(
         dosya_yolu,
         onceki_fotograf,
@@ -196,7 +191,6 @@ async def analiz_yap(
     if not sonuc["basarili"]:
         raise HTTPException(status_code=500, detail=sonuc["hata"])
 
-    # Veritabanına kaydet
     analiz = Analiz(
         bahce_id=bahce_id,
         fotograf_yolu=dosya_yolu,
@@ -209,7 +203,6 @@ async def analiz_yap(
     db.commit()
     db.refresh(analiz)
 
-    # E-posta arka planda gönder
     if bahce and bahce.kullanici_id:
         kullanici = db.query(Kullanici).filter(Kullanici.id == bahce.kullanici_id).first()
         if kullanici and kullanici.email:

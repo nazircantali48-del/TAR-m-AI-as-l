@@ -5,5 +5,5 @@ python-multipart
 pillow
 google-genai
 psycopg2-binary
-passlib[bcrypt]
+bcrypt
 python-jose[cryptography]
