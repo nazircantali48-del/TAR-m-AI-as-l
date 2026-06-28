@@ -1,0 +1,13 @@
+name: Proaktif Kontrol
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  kontrol:
+    runs-on: ubuntu-latest
+    steps:
+      - name: API Çağır
+        run: curl https://tar-m-ai-as-l.onrender.com/api/proaktif-kontrol
