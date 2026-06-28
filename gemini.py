@@ -8,7 +8,7 @@ try:
 except ImportError:
     API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-client = genai.Client(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY, http_options={"api_version": "v1"})
 
 def fotograf_base64(yol):
     with open(yol, "rb") as f:
@@ -84,9 +84,9 @@ UYGULAMA_SIKLIĞI: (örn: 10 gün arayla 2 kez)
         parts.append({"text": prompt})
 
         response = client.models.generate_content(
-    model="gemini-1.5-flash",  # bunu dene
-    contents=[{"parts": parts}]
-)
+            model="gemini-1.5-flash",
+            contents=[{"parts": parts}]
+        )
 
         rapor = response.text
 
