@@ -16,12 +16,13 @@
                 <span class="text-2xl">🌿</span>
                 <span class="text-xl font-bold">Tarım AI</span>
             </div>
-            <div class="flex gap-6">
+            <div class="flex items-center gap-6">
                 <a href="/" class="hover:text-green-200">Dashboard</a>
                 <a href="/analiz" class="hover:text-green-200">Analiz</a>
                 <a href="/bahceler" class="font-semibold border-b-2 border-white pb-1">Bahçeler</a>
                 <a href="/gecmis" class="hover:text-green-200">Geçmiş</a>
                 <a href="/ilaclar" class="hover:text-green-200">İlaçlama</a>
+                <button onclick="cikisYap()" class="bg-green-800 px-3 py-1 rounded-lg text-sm hover:bg-green-900">Çıkış</button>
             </div>
         </div>
     </nav>
@@ -38,7 +39,6 @@
             </button>
         </div>
 
-        <!-- BAHÇE LİSTESİ -->
         <div id="bahceler" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <p class="text-gray-400 col-span-3 text-center py-12">Yükleniyor...</p>
         </div>
@@ -59,9 +59,10 @@
                         class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Konum</label>
-                    <input type="text" id="bahce-konum" placeholder="Örn: Marmaris, Muğla"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Konum (enlem, boylam)</label>
+                    <input type="text" id="bahce-konum" placeholder="Örn: 37.0, 35.0"
                         class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-400 mt-1">Hava durumu için koordinat girin</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Alan (m²)</label>
@@ -89,48 +90,73 @@
     </div>
 
     <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/giris';
+
+        function cikisYap() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('kullanici_ad');
+            window.location.href = '/giris';
+        }
+
+        function tokenliIstek(url, ayarlar = {}) {
+            return fetch(url, {
+                ...ayarlar,
+                headers: {
+                    ...(ayarlar.headers || {}),
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        }
+
         async function yukle() {
-            const res = await fetch('/api/bahceler');
-            const bahceler = await res.json();
-            const div = document.getElementById('bahceler');
+            try {
+                const res = await tokenliIstek('/api/bahceler');
+                if (res.status === 401) { window.location.href = '/giris'; return; }
+                const bahceler = await res.json();
+                const div = document.getElementById('bahceler');
 
-            if (bahceler.length === 0) {
-                div.innerHTML = `
-                    <div class="col-span-3 text-center py-16">
-                        <div class="text-6xl mb-4">🌱</div>
-                        <p class="text-gray-400 text-lg">Henüz bahçe eklenmedi</p>
-                        <button onclick="modalAc()" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700">
-                            İlk Bahçeni Ekle
-                        </button>
-                    </div>`;
-                return;
-            }
+                if (!Array.isArray(bahceler) || bahceler.length === 0) {
+                    div.innerHTML = `
+                        <div class="col-span-3 text-center py-16">
+                            <div class="text-6xl mb-4">🌱</div>
+                            <p class="text-gray-400 text-lg">Henüz bahçe eklenmedi</p>
+                            <button onclick="modalAc()" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700">
+                                İlk Bahçeni Ekle
+                            </button>
+                        </div>`;
+                    return;
+                }
 
-            div.innerHTML = bahceler.map(b => `
-                <div class="bg-white rounded-2xl shadow p-6 hover:shadow-md transition">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800">${b.ad}</h3>
-                            ${b.konum ? `<p class="text-gray-500 text-sm mt-1">📍 ${b.konum}</p>` : ''}
+                div.innerHTML = bahceler.map(b => `
+                    <div class="bg-white rounded-2xl shadow p-6 hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">${b.ad}</h3>
+                                ${b.konum ? `<p class="text-gray-500 text-sm mt-1">📍 ${b.konum}</p>` : ''}
+                            </div>
+                            <button onclick="bahceSil(${b.id})" class="text-red-400 hover:text-red-600 text-sm">Sil</button>
                         </div>
-                        <button onclick="bahceSil(${b.id})" class="text-red-400 hover:text-red-600 text-sm">Sil</button>
+                        ${b.alan_m2 ? `<p class="text-gray-600 text-sm mb-2">📐 ${b.alan_m2} m²</p>` : ''}
+                        ${b.notlar ? `<p class="text-gray-500 text-sm mb-4">${b.notlar}</p>` : ''}
+                        <div class="flex gap-2 mt-4">
+                            <a href="/analiz" class="flex-1 bg-green-100 text-green-700 py-2 rounded-lg text-sm text-center font-medium hover:bg-green-200">
+                                Analiz Yap
+                            </a>
+                            <a href="/gecmis" class="flex-1 bg-blue-100 text-blue-700 py-2 rounded-lg text-sm text-center font-medium hover:bg-blue-200">
+                                Geçmiş
+                            </a>
+                        </div>
                     </div>
-                    ${b.alan_m2 ? `<p class="text-gray-600 text-sm mb-2">📐 ${b.alan_m2} m²</p>` : ''}
-                    ${b.notlar ? `<p class="text-gray-500 text-sm mb-4">${b.notlar}</p>` : ''}
-                    <div class="flex gap-2 mt-4">
-                        <a href="/analiz" class="flex-1 bg-green-100 text-green-700 py-2 rounded-lg text-sm text-center font-medium hover:bg-green-200">
-                            Analiz Yap
-                        </a>
-                        <a href="/gecmis" class="flex-1 bg-blue-100 text-blue-700 py-2 rounded-lg text-sm text-center font-medium hover:bg-blue-200">
-                            Geçmiş
-                        </a>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            } catch(e) {
+                document.getElementById('bahceler').innerHTML =
+                    '<p class="text-red-400 col-span-3 text-center py-12">Veriler yüklenemedi</p>';
+            }
         }
 
         async function bahceEkle() {
-            const ad = document.getElementById('bahce-ad').value;
+            const ad = document.getElementById('bahce-ad').value.trim();
             if (!ad) { alert('Bahçe adı zorunlu!'); return; }
 
             const form = new FormData();
@@ -139,19 +165,32 @@
             form.append('alan_m2', document.getElementById('bahce-alan').value || 0);
             form.append('notlar', document.getElementById('bahce-notlar').value);
 
-            await fetch('/api/bahceler', { method: 'POST', body: form });
-            modalKapat();
-            yukle();
+            const res = await tokenliIstek('/api/bahceler', { method: 'POST', body: form });
+            if (res.ok) {
+                modalKapat();
+                // Formu temizle
+                document.getElementById('bahce-ad').value = '';
+                document.getElementById('bahce-konum').value = '';
+                document.getElementById('bahce-alan').value = '';
+                document.getElementById('bahce-notlar').value = '';
+                yukle();
+            } else {
+                alert('Bahçe eklenirken hata oluştu!');
+            }
         }
 
         async function bahceSil(id) {
             if (!confirm('Bu bahçeyi silmek istediğinize emin misiniz?')) return;
-            await fetch(`/api/bahceler/${id}`, { method: 'DELETE' });
+            await tokenliIstek(`/api/bahceler/${id}`, { method: 'DELETE' });
             yukle();
         }
 
         function modalAc() { document.getElementById('modal').classList.remove('hidden'); }
         function modalKapat() { document.getElementById('modal').classList.add('hidden'); }
+
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) modalKapat();
+        });
 
         yukle();
     </script>
