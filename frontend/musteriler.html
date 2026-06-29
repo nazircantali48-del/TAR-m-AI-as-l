@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarım AI - Müşteriler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0fdf4; }
+        .gradient-header { background: linear-gradient(135deg, #065f46 0%, #059669 50%, #10b981 100%); }
+        .nav-link { padding: 6px 14px; border-radius: 8px; transition: background 0.15s; font-size: 14px; font-weight: 500; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); }
+        .risk-bar { height: 6px; border-radius: 99px; background: #e5e7eb; overflow: hidden; }
+        .risk-fill { height: 100%; border-radius: 99px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.35s ease forwards; }
+    </style>
+</head>
+<body>
+
+    <!-- MÜHENDIS NAV -->
+    <nav class="gradient-header text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-white bg-opacity-20 rounded-xl flex items-center justify-center text-lg">🌿</div>
+                <span class="text-lg font-bold tracking-tight">Tarım AI</span>
+                <span class="bg-white bg-opacity-20 text-xs px-2 py-0.5 rounded-full font-medium">Ziraat Mühendisi</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <a href="/musteriler" class="nav-link active text-white">Müşteriler</a>
+                <a href="/gecmis" class="nav-link text-white">Analizler</a>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="kullanici-ad" class="text-sm text-green-100 font-medium"></span>
+                <button onclick="cikisYap()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg text-sm font-medium transition">Çıkış</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- BAŞLIK -->
+    <div class="bg-gradient-to-r from-emerald-50 to-green-100 px-6 py-8 border-b border-emerald-100">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+                <p class="text-emerald-600 font-semibold text-sm mb-1">👨‍🔬 Ziraat Mühendisi Paneli</p>
+                <h1 class="text-3xl font-extrabold text-gray-800 mb-1">Müşterilerim</h1>
+                <p class="text-gray-500">Takip ettiğiniz çiftçiler ve bahçe durumları</p>
+            </div>
+            <button onclick="modalAc()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-200 transition flex items-center gap-2 text-sm">
+                + Müşteri Ekle
+            </button>
+        </div>
+    </div>
+
+    <!-- ÖZET İSTATİSTİKLER -->
+    <div class="max-w-7xl mx-auto px-6 py-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 fade-in">
+            <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-emerald-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-gray-500 text-sm font-medium">Toplam Müşteri</p>
+                    <div class="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center text-lg">👤</div>
+                </div>
+                <p class="text-3xl font-extrabold text-emerald-600" id="stat-musteri">—</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-gray-500 text-sm font-medium">Toplam Bahçe</p>
+                    <div class="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center text-lg">🌳</div>
+                </div>
+                <p class="text-3xl font-extrabold text-blue-600" id="stat-bahce">—</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-red-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-gray-500 text-sm font-medium">Yüksek Riskli</p>
+                    <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center text-lg">🚨</div>
+                </div>
+                <p class="text-3xl font-extrabold text-red-600" id="stat-risk">—</p>
+            </div>
+        </div>
+
+        <!-- MÜŞTERİ LİSTESİ -->
+        <div id="musteri-listesi" class="space-y-4 fade-in">
+            <p class="text-gray-400 text-center py-12">Yükleniyor...</p>
+        </div>
+    </div>
+
+    <!-- MÜŞTERİ DETAY MODAL -->
+    <div id="detay-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800" id="detay-baslik">Müşteri Detayı</h2>
+                <button onclick="detayKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="detay-icerik"></div>
+        </div>
+    </div>
+
+    <!-- MÜŞTERİ EKLEME MODAL -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Müşteri Ekle</h2>
+                <button onclick="modalKapat()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="modal-hata" class="hidden bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 mb-4 text-sm"></div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Çiftçinin Email Adresi</label>
+                    <input type="email" id="ciftci-email" placeholder="ciftci@email.com"
+                        class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50">
+                    <p class="text-xs text-gray-400 mt-1">Çiftçinin Tarım AI'a kayıtlı emaili olmalı</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notlar</label>
+                    <textarea id="musteri-notlar" rows="3" placeholder="Bu müşteri hakkında notlarınız..."
+                        class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="modalKapat()"
+                    class="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition">İptal</button>
+                <button onclick="musteriEkle()" id="ekle-btn"
+                    class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition">Ekle</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const kullaniciAd = localStorage.getItem('kullanici_ad');
+        const rol = localStorage.getItem('rol');
+
+        if (!token) window.location.href = '/giris';
+        if (rol !== 'ziraat_muhendisi') window.location.href = '/';
+        if (kullaniciAd) document.getElementById('kullanici-ad').textContent = `👤 ${kullaniciAd}`;
+
+        function cikisYap() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('kullanici_ad');
+            localStorage.removeItem('rol');
+            window.location.href = '/giris';
+        }
+
+        function tokenliIstek(url, ayarlar = {}) {
+            return fetch(url, {
+                ...ayarlar,
+                headers: { ...(ayarlar.headers || {}), 'Authorization': `Bearer ${token}` }
+            });
+        }
+
+        function riskBilgi(risk) {
+            if (risk === null || risk === undefined) return { fill: '#9ca3af', label: 'Analiz yok', badge: 'bg-gray-100 text-gray-500' };
+            if (risk <= 3) return { fill: '#10b981', label: 'Düşük', badge: 'bg-emerald-100 text-emerald-700' };
+            if (risk <= 6) return { fill: '#f59e0b', label: 'Orta', badge: 'bg-yellow-100 text-yellow-700' };
+            return { fill: '#ef4444', label: 'Yüksek', badge: 'bg-red-100 text-red-700' };
+        }
+
+        async function yukle() {
+            try {
+                const res = await tokenliIstek('/api/musteriler');
+                if (res.status === 401) { window.location.href = '/giris'; return; }
+                if (res.status === 403) { window.location.href = '/'; return; }
+                const musteriler = await res.json();
+
+                // İstatistikler
+                const toplamBahce = musteriler.reduce((t, m) => t + m.bahceler.length, 0);
+                const yuksekRisk = musteriler.reduce((t, m) =>
+                    t + m.bahceler.filter(b => b.son_risk_skoru >= 7).length, 0);
+                document.getElementById('stat-musteri').textContent = musteriler.length;
+                document.getElementById('stat-bahce').textContent = toplamBahce;
+                document.getElementById('stat-risk').textContent = yuksekRisk;
+
+                const div = document.getElementById('musteri-listesi');
+                if (musteriler.length === 0) {
+                    div.innerHTML = `
+                        <div class="text-center py-16 bg-white rounded-2xl shadow-sm">
+                            <div class="text-6xl mb-4">👤</div>
+                            <p class="text-gray-400 text-lg font-medium">Henüz müşteri eklenmedi</p>
+                            <p class="text-gray-400 text-sm mt-1">Takip etmek istediğiniz çiftçileri ekleyin</p>
+                            <button onclick="modalAc()" class="mt-4 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-semibold transition">
+                                İlk Müşteriyi Ekle
+                            </button>
+                        </div>`;
+                    return;
+                }
+
+                div.innerHTML = musteriler.map(m => {
+                    const maxRisk = m.bahceler.length > 0
+                        ? Math.max(...m.bahceler.map(b => b.son_risk_skoru || 0))
+                        : null;
+                    const rb = riskBilgi(maxRisk);
+
+                    return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-2xl font-bold text-emerald-600">
+                                        ${m.ciftci_ad.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-gray-800 text-lg">${m.ciftci_ad}</h3>
+                                        <p class="text-gray-400 text-sm">${m.ciftci_email}</p>
+                                        ${m.notlar ? `<p class="text-gray-500 text-xs mt-0.5 italic">"${m.notlar}"</p>` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${rb.badge}">
+                                        ${maxRisk !== null ? `Risk: ${maxRisk}/10` : 'Analiz yok'}
+                                    </span>
+                                    <button onclick="musteriSil(${m.iliski_id})" class="text-red-400 hover:text-red-600 text-xs font-medium px-2">Sil</button>
+                                </div>
+                            </div>
+
+                            <!-- BAHÇELER -->
+                            ${m.bahceler.length > 0 ? `
+                            <div class="border-t border-gray-100 pt-4">
+                                <p class="text-xs font-semibold text-gray-400 mb-3">BAHÇELER (${m.bahceler.length})</p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    ${m.bahceler.map(b => {
+                                        const brb = riskBilgi(b.son_risk_skoru);
+                                        return `
+                                        <div class="bg-gray-50 rounded-xl p-3">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <p class="font-semibold text-gray-700 text-sm">🌳 ${b.ad}</p>
+                                                <span class="text-xs font-medium ${brb.badge} px-2 py-0.5 rounded-full">${brb.label}</span>
+                                            </div>
+                                            ${b.son_risk_skoru !== null ? `
+                                            <div class="risk-bar mb-1">
+                                                <div class="risk-fill" style="width:${(b.son_risk_skoru||0)*10}%;background:${brb.fill}"></div>
+                                            </div>` : ''}
+                                            ${b.son_hastalik ? `<p class="text-xs text-gray-500 mt-1">🔬 ${b.son_hastalik}</p>` : ''}
+                                            ${b.son_analiz_tarihi ? `<p class="text-xs text-gray-400">${new Date(b.son_analiz_tarihi).toLocaleDateString('tr-TR')}</p>` : '<p class="text-xs text-gray-400">Analiz yapılmadı</p>'}
+                                        </div>`;
+                                    }).join('')}
+                                </div>
+                            </div>` : `
+                            <div class="border-t border-gray-100 pt-4">
+                                <p class="text-gray-400 text-sm text-center py-2">Bu müşterinin henüz bahçesi yok</p>
+                            </div>`}
+
+                            <div class="mt-4 flex gap-2">
+                                <button onclick="detayGoster(${m.ciftci_id}, '${m.ciftci_ad}')"
+                                    class="flex-1 bg-blue-100 text-blue-700 py-2 rounded-xl text-sm font-semibold hover:bg-blue-200 transition">
+                                    📋 Tüm Analizleri Gör
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+            } catch(e) {
+                document.getElementById('musteri-listesi').innerHTML =
+                    '<p class="text-red-400 text-center py-12">Veriler yüklenemedi</p>';
+            }
+        }
+
+        async function musteriEkle() {
+            const email = document.getElementById('ciftci-email').value.trim();
+            const notlar = document.getElementById('musteri-notlar').value;
+            if (!email) { modalHataGoster('Email gerekli!'); return; }
+
+            const btn = document.getElementById('ekle-btn');
+            btn.disabled = true;
+            btn.textContent = 'Ekleniyor...';
+
+            const form = new FormData();
+            form.append('ciftci_email', email);
+            form.append('notlar', notlar);
+
+            try {
+                const res = await tokenliIstek('/api/musteri-ekle', { method: 'POST', body: form });
+                const veri = await res.json();
+                if (!res.ok) { modalHataGoster(veri.detail || 'Hata oluştu'); return; }
+                modalKapat();
+                document.getElementById('ciftci-email').value = '';
+                document.getElementById('musteri-notlar').value = '';
+                yukle();
+            } catch(e) {
+                modalHataGoster('Bağlantı hatası');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Ekle';
+            }
+        }
+
+        async function musteriSil(iliskiId) {
+            if (!confirm('Bu müşteriyi listeden kaldırmak istediğinize emin misiniz?')) return;
+            await tokenliIstek(`/api/musteri-sil/${iliskiId}`, { method: 'DELETE' });
+            yukle();
+        }
+
+        async function detayGoster(ciftciId, ciftciAd) {
+            document.getElementById('detay-baslik').textContent = `${ciftciAd} — Analizler`;
+            document.getElementById('detay-icerik').innerHTML = '<p class="text-gray-400 text-center py-8">Yükleniyor...</p>';
+            document.getElementById('detay-modal').classList.remove('hidden');
+
+            try {
+                const res = await tokenliIstek(`/api/musteri-analizler/${ciftciId}`);
+                const analizler = await res.json();
+
+                if (analizler.length === 0) {
+                    document.getElementById('detay-icerik').innerHTML =
+                        '<p class="text-gray-400 text-center py-8">Henüz analiz yapılmamış</p>';
+                    return;
+                }
+
+                document.getElementById('detay-icerik').innerHTML = analizler.map(a => {
+                    const risk = a.risk_skoru || 0;
+                    const rb = riskBilgi(risk);
+                    const saglikli = a.hastalik_adi === 'Sağlıklı';
+                    return `
+                    <div class="border border-gray-100 rounded-xl p-4 mb-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${saglikli ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                ${a.hastalik_adi || 'Bilinmiyor'}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <div class="risk-bar w-16">
+                                    <div class="risk-fill" style="width:${risk*10}%;background:${rb.fill}"></div>
+                                </div>
+                                <span class="text-xs font-bold text-gray-600">${risk}/10</span>
+                                <span class="text-xs text-gray-400">${new Date(a.tarih).toLocaleDateString('tr-TR')}</span>
+                            </div>
+                        </div>
+                        ${a.ai_raporu ? `<p class="text-gray-600 text-xs leading-relaxed line-clamp-3">${a.ai_raporu.substring(0, 200)}...</p>` : ''}
+                    </div>`;
+                }).join('');
+            } catch(e) {
+                document.getElementById('detay-icerik').innerHTML =
+                    '<p class="text-red-400 text-center py-8">Veriler yüklenemedi</p>';
+            }
+        }
+
+        function modalAc() {
+            document.getElementById('modal-hata').classList.add('hidden');
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function modalKapat() { document.getElementById('modal').classList.add('hidden'); }
+        function detayKapat() { document.getElementById('detay-modal').classList.add('hidden'); }
+        function modalHataGoster(mesaj) {
+            const div = document.getElementById('modal-hata');
+            div.textContent = mesaj;
+            div.classList.remove('hidden');
+        }
+
+        document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) modalKapat(); });
+        document.getElementById('detay-modal').addEventListener('click', function(e) { if (e.target === this) detayKapat(); });
+
+        yukle();
+    </script>
+</body>
+</html>

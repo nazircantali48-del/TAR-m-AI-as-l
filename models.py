@@ -11,9 +11,27 @@ class Kullanici(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     sifre_hash = Column(String, nullable=False)
     aktif = Column(Boolean, default=True)
-    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)  # Güvenli zaman damgası
+    rol = Column(String, default="ciftci")  # "ciftci" veya "ziraat_muhendisi"
+    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
 
     bahceler = relationship("Bahce", back_populates="kullanici", cascade="all, delete-orphan")
+    # Mühendis olarak bağlı müşteriler
+    musteriler = relationship("MusteriIliskisi", foreign_keys="MusteriIliskisi.muhendis_id", back_populates="muhendis", cascade="all, delete-orphan")
+    # Çiftçi olarak bağlı mühendisler
+    muhendisileri = relationship("MusteriIliskisi", foreign_keys="MusteriIliskisi.ciftci_id", back_populates="ciftci", cascade="all, delete-orphan")
+
+
+class MusteriIliskisi(Base):
+    __tablename__ = "musteri_iliskileri"
+
+    id = Column(Integer, primary_key=True, index=True)
+    muhendis_id = Column(Integer, ForeignKey("kullanicilar.id"), nullable=False)
+    ciftci_id = Column(Integer, ForeignKey("kullanicilar.id"), nullable=False)
+    notlar = Column(Text)  # Mühendisten çiftçiye özel notlar
+    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+
+    muhendis = relationship("Kullanici", foreign_keys=[muhendis_id], back_populates="musteriler")
+    ciftci = relationship("Kullanici", foreign_keys=[ciftci_id], back_populates="muhendisileri")
 
 
 class Bahce(Base):
@@ -22,7 +40,7 @@ class Bahce(Base):
     id = Column(Integer, primary_key=True, index=True)
     kullanici_id = Column(Integer, ForeignKey("kullanicilar.id"), nullable=True)
     ad = Column(String, nullable=False)
-    konum = Column(String)  # "37.0, 35.0" formatında dinamik hava durumu koordinatı taşır
+    konum = Column(String)
     alan_m2 = Column(Float)
     notlar = Column(Text)
     olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
@@ -38,10 +56,10 @@ class Analiz(Base):
     id = Column(Integer, primary_key=True, index=True)
     bahce_id = Column(Integer, ForeignKey("bahceler.id"))
     fotograf_yolu = Column(String)
-    hastalik_adi = Column(String)  # Gemini'dan dönen ziraat teşhis ismi (Örn: Demir Eksikliği)
-    ai_raporu = Column(Text)       # Detaylı reçete, çevre analizi ve aksiyon planı
-    risk_skoru = Column(Integer, default=0) # 1-10 arası tehlike derecesi
-    tahmin = Column(Text)          # YOLOv8 modelinin bastığı ham etiket (Örn: magnezyum_eksikligi)
+    hastalik_adi = Column(String)
+    ai_raporu = Column(Text)
+    risk_skoru = Column(Integer, default=0)
+    tahmin = Column(Text)
     tarih = Column(DateTime, default=datetime.utcnow)
 
     bahce = relationship("Bahce", back_populates="analizler")
@@ -54,10 +72,10 @@ class Ilaclama(Base):
     id = Column(Integer, primary_key=True, index=True)
     bahce_id = Column(Integer, ForeignKey("bahceler.id"))
     analiz_id = Column(Integer, ForeignKey("analizler.id"), nullable=True)
-    ilac_adi = Column(String, nullable=False)  # Önerilen ilaç ya da gübrenin adı
-    doz = Column(String)                       # Örn: "200g / 100L su"
+    ilac_adi = Column(String, nullable=False)
+    doz = Column(String)
     uygulama_tarihi = Column(DateTime, nullable=False)
-    sonraki_tarih = Column(DateTime, nullable=True) # Periyodik kontrol için sistemin ürettiği tarih
+    sonraki_tarih = Column(DateTime, nullable=True)
     notlar = Column(Text)
 
     bahce = relationship("Bahce", back_populates="ilaclamalar")

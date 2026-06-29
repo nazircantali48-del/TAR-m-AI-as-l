@@ -45,7 +45,10 @@
     </div>
 
     <script>
-        if (localStorage.getItem('token')) window.location.href = '/';
+        if (localStorage.getItem('token')) {
+            const rol = localStorage.getItem('rol');
+            window.location.href = rol === 'ziraat_muhendisi' ? '/musteriler' : '/';
+        }
 
         async function girisYap() {
             const email = document.getElementById('email').value;
@@ -66,7 +69,8 @@
                 if (!res.ok) { hataGoster(veri.detail || 'Hata oluştu'); return; }
                 localStorage.setItem('token', veri.token);
                 localStorage.setItem('kullanici_ad', veri.kullanici_ad);
-                window.location.href = '/';
+                localStorage.setItem('rol', veri.rol);
+                window.location.href = veri.rol === 'ziraat_muhendisi' ? '/musteriler' : '/';
             } catch (e) {
                 hataGoster('Bağlantı hatası');
             } finally {

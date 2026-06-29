@@ -10,6 +10,9 @@
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 60%, #a7f3d0 100%); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.4s ease forwards; }
+        .rol-kart { border: 2px solid #e5e7eb; border-radius: 16px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+        .rol-kart:hover { border-color: #10b981; background: #f0fdf4; }
+        .rol-kart.secili { border-color: #059669; background: #ecfdf5; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -23,6 +26,23 @@
         <div id="hata" class="hidden bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 mb-4 text-sm"></div>
 
         <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Hesap Türü</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rol-kart secili" id="kart-ciftci" onclick="rolSec('ciftci')">
+                        <div id="ikon-ciftci" class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-xl mb-2 text-white">🌾</div>
+                        <p class="font-semibold text-gray-800 text-sm">Çiftçi</p>
+                        <p class="text-gray-400 text-xs mt-0.5">Bahçelerimi yönetirim</p>
+                    </div>
+                    <div class="rol-kart" id="kart-muhendis" onclick="rolSec('ziraat_muhendisi')">
+                        <div id="ikon-muhendis" class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-xl mb-2">👨‍🔬</div>
+                        <p class="font-semibold text-gray-800 text-sm">Ziraat Müh.</p>
+                        <p class="text-gray-400 text-xs mt-0.5">Müşterilerimi takip ederim</p>
+                    </div>
+                </div>
+                <input type="hidden" id="rol" value="ciftci">
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label>
                 <input type="text" id="ad" placeholder="Adınız Soyadınız"
@@ -50,12 +70,25 @@
     </div>
 
     <script>
-        if (localStorage.getItem('token')) window.location.href = '/';
+        if (localStorage.getItem('token')) {
+            const rol = localStorage.getItem('rol');
+            window.location.href = rol === 'ziraat_muhendisi' ? '/musteriler' : '/';
+        }
+
+        function rolSec(rol) {
+            document.getElementById('rol').value = rol;
+            const ciftciSecili = rol === 'ciftci';
+            document.getElementById('kart-ciftci').classList.toggle('secili', ciftciSecili);
+            document.getElementById('kart-muhendis').classList.toggle('secili', !ciftciSecili);
+            document.getElementById('ikon-ciftci').className = `w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-2 ${ciftciSecili ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`;
+            document.getElementById('ikon-muhendis').className = `w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-2 ${!ciftciSecili ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`;
+        }
 
         async function kayitOl() {
             const ad = document.getElementById('ad').value;
             const email = document.getElementById('email').value;
             const sifre = document.getElementById('sifre').value;
+            const rol = document.getElementById('rol').value;
             if (!ad || !email || !sifre) { hataGoster('Tüm alanları doldurun!'); return; }
             if (sifre.length < 6) { hataGoster('Şifre en az 6 karakter olmalı!'); return; }
 
@@ -67,6 +100,7 @@
             form.append('ad', ad);
             form.append('email', email);
             form.append('sifre', sifre);
+            form.append('rol', rol);
 
             try {
                 const res = await fetch('/api/kayit', { method: 'POST', body: form });
@@ -74,7 +108,8 @@
                 if (!res.ok) { hataGoster(veri.detail || 'Hata oluştu'); return; }
                 localStorage.setItem('token', veri.token);
                 localStorage.setItem('kullanici_ad', veri.kullanici_ad);
-                window.location.href = '/';
+                localStorage.setItem('rol', veri.rol);
+                window.location.href = veri.rol === 'ziraat_muhendisi' ? '/musteriler' : '/';
             } catch (e) {
                 hataGoster('Bağlantı hatası');
             } finally {
