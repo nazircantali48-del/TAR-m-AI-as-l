@@ -30,17 +30,28 @@
 
     <nav class="gradient-header text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <!-- LOGO -->
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 bg-white bg-opacity-20 rounded-xl flex items-center justify-center text-lg">🌿</div>
                 <span class="text-lg font-bold tracking-tight">Tarım AI</span>
             </div>
-            <div class="flex items-center gap-1">
+
+            <!-- ÇİFTÇİ NAV -->
+            <div id="nav-ciftci" class="hidden items-center gap-1">
                 <a href="/" class="nav-link active text-white">Dashboard</a>
                 <a href="/analiz" class="nav-link text-white">Analiz</a>
                 <a href="/bahceler" class="nav-link text-white">Bahçeler</a>
                 <a href="/gecmis" class="nav-link text-white">Geçmiş</a>
                 <a href="/ilaclar" class="nav-link text-white">İlaçlama</a>
             </div>
+
+            <!-- MÜHENDİS NAV -->
+            <div id="nav-muhendis" class="hidden items-center gap-1">
+                <a href="/musteriler" class="nav-link text-white">👥 Müşterilerim</a>
+                <a href="/gecmis" class="nav-link text-white">📋 Geçmiş</a>
+            </div>
+
+            <!-- KULLANICI & ÇIKIŞ -->
             <div class="flex items-center gap-3">
                 <span id="kullanici-ad" class="text-sm text-green-100 font-medium"></span>
                 <button onclick="cikisYap()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg text-sm font-medium transition">Çıkış</button>
@@ -63,7 +74,6 @@
 
     <div class="max-w-7xl mx-auto px-6 py-8">
 
-        <!-- İSTATİSTİKLER -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8 fade-in">
             <div class="stat-card border-l-4 border-emerald-500">
                 <div class="flex items-center justify-between mb-3">
@@ -91,7 +101,6 @@
             </div>
         </div>
 
-        <!-- YÜKSEK RİSK UYARISI -->
         <div id="risk-uyari" class="hidden bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 fade-in">
             <div class="flex items-center gap-3 mb-3">
                 <span class="text-2xl">🚨</span>
@@ -103,10 +112,7 @@
             <div id="risk-listesi"></div>
         </div>
 
-        <!-- ANA İÇERİK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            <!-- SON ANALİZLER -->
             <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 fade-in">
                 <div class="flex items-center justify-between mb-5">
                     <div>
@@ -115,42 +121,27 @@
                     </div>
                     <a href="/gecmis" class="text-emerald-600 text-sm font-semibold hover:underline">Tümünü gör →</a>
                 </div>
-                <div id="son-analizler">
-                    <p class="text-gray-400 text-center py-8">Yükleniyor...</p>
-                </div>
+                <div id="son-analizler"><p class="text-gray-400 text-center py-8">Yükleniyor...</p></div>
             </div>
 
-            <!-- HIZLI ERİŞİM -->
             <div class="bg-white rounded-2xl shadow-sm p-6 fade-in">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">Hızlı Erişim</h2>
                 <div class="flex flex-col gap-2">
                     <a href="/analiz" class="quick-btn bg-emerald-50 hover:bg-emerald-100 text-emerald-700">
                         <span class="text-2xl">🔍</span>
-                        <div>
-                            <p class="font-semibold text-sm">Analiz Yap</p>
-                            <p class="text-xs text-emerald-500 mt-0.5">Fotoğraf yükle, AI analiz etsin</p>
-                        </div>
+                        <div><p class="font-semibold text-sm">Analiz Yap</p><p class="text-xs text-emerald-500 mt-0.5">Fotoğraf yükle, AI analiz etsin</p></div>
                     </a>
                     <a href="/bahceler" class="quick-btn bg-blue-50 hover:bg-blue-100 text-blue-700">
                         <span class="text-2xl">🌳</span>
-                        <div>
-                            <p class="font-semibold text-sm">Bahçeler</p>
-                            <p class="text-xs text-blue-500 mt-0.5">Bahçe ekle ve yönet</p>
-                        </div>
+                        <div><p class="font-semibold text-sm">Bahçeler</p><p class="text-xs text-blue-500 mt-0.5">Bahçe ekle ve yönet</p></div>
                     </a>
                     <a href="/gecmis" class="quick-btn bg-purple-50 hover:bg-purple-100 text-purple-700">
                         <span class="text-2xl">📋</span>
-                        <div>
-                            <p class="font-semibold text-sm">Geçmiş</p>
-                            <p class="text-xs text-purple-500 mt-0.5">Tüm analiz kayıtları</p>
-                        </div>
+                        <div><p class="font-semibold text-sm">Geçmiş</p><p class="text-xs text-purple-500 mt-0.5">Tüm analiz kayıtları</p></div>
                     </a>
                     <a href="/ilaclar" class="quick-btn bg-orange-50 hover:bg-orange-100 text-orange-700">
                         <span class="text-2xl">💊</span>
-                        <div>
-                            <p class="font-semibold text-sm">İlaçlama</p>
-                            <p class="text-xs text-orange-500 mt-0.5">İlaç takvimi ve kayıtlar</p>
-                        </div>
+                        <div><p class="font-semibold text-sm">İlaçlama</p><p class="text-xs text-orange-500 mt-0.5">İlaç takvimi ve kayıtlar</p></div>
                     </a>
                 </div>
             </div>
@@ -159,16 +150,29 @@
 
     <script>
         const token = localStorage.getItem('token');
-        const kullaniciAd = localStorage.getItem('kullanici_ad');
+        const rol = localStorage.getItem('rol');
         if (!token) window.location.href = '/giris';
-        if (kullaniciAd) {
-            document.getElementById('kullanici-ad').textContent = `👤 ${kullaniciAd}`;
-            document.getElementById('kullanici-isim').textContent = kullaniciAd;
+        // Mühendis index'e gelirse müşteriler sayfasına yönlendir
+        if (rol === 'ziraat_muhendisi') window.location.href = '/musteriler';
+
+        function navAyarla() {
+            const ad = localStorage.getItem('kullanici_ad');
+            if (ad) {
+                document.getElementById('kullanici-ad').textContent = `👤 ${ad}`;
+                document.getElementById('kullanici-isim').textContent = ad;
+            }
+            if (rol === 'ziraat_muhendisi') {
+                document.getElementById('nav-muhendis').style.display = 'flex';
+            } else {
+                document.getElementById('nav-ciftci').style.display = 'flex';
+            }
         }
+        navAyarla();
 
         function cikisYap() {
             localStorage.removeItem('token');
             localStorage.removeItem('kullanici_ad');
+            localStorage.removeItem('rol');
             window.location.href = '/giris';
         }
 
