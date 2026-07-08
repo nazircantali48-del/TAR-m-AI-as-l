@@ -101,24 +101,6 @@
             });
         }
 
-        function raporTemizle(rapor) {
-            if (!rapor) return '';
-            const gizlenecekAlanlar = [
-                'DEĞİŞİM', 'TAHMİN', 'RİSK_SKORU',
-                'ÖNERİLEN_İLAÇ', 'ÖNERİLEN_DOZ', 'UYGULAMA_SIKLIĞI'
-            ];
-            const satirlar = rapor.split('\n');
-            const sonuc = [];
-            let atlaModu = false;
-            for (const satir of satirlar) {
-                const baslikMi = gizlenecekAlanlar.some(a => satir.trim().toUpperCase().startsWith(a + ':'));
-                if (baslikMi) { atlaModu = true; continue; }
-                if (atlaModu && /^[A-ZÇĞİÖŞÜ_]+:/.test(satir.trim())) { atlaModu = false; }
-                if (!atlaModu) sonuc.push(satir);
-            }
-            return sonuc.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-        }
-
         async function bahceleriYukle() {
             try {
                 const res = await tokenliIstek('/api/bahceler');
